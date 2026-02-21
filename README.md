@@ -1,38 +1,90 @@
-# Bloomora (local-only study tracker)
+🌸 Bloomora
 
-A single-page, **local-first** study timer + stats dashboard with gamified progress.
+Bloomora is a gamified study productivity web app designed to help you focus, build streaks, and track progress through an interactive island and garden system.
 
-## Gamification (synced progress)
+It combines structured study sessions with light progression mechanics to make productivity feel rewarding and engaging.
 
-Every time you **End & Save** a study session, the app adds that time to **both**:
+✨ Features
 
-- **Island**: levels up every **5 hours** of total study time (more levels unlock more upgrades).
-- **Garden**: grows from **Seed → Sprout → Plant → Sapling → Tree** (tree at **2 hours**), then generates fruit over time that you can harvest into your collection.
+⏱ Pomodoro-style study timer
 
-You can switch between Island / Garden pages at any time — your progress is always kept in sync.
+🌱 Island & garden progression system
 
-## Music + background sounds
+🏷 Custom labels for organizing sessions
 
-- Ambient background sounds: **Fire / Wind / Sea / Nature**
-- LoFi Girl playlist: embedded YouTube stream (open via the **music** button)
+📊 Study statistics & streak tracking
 
-## Run locally
+📁 Import / export full progress backups
 
-1. Download the folder.
-2. Open `index.html` in your browser.
+🎵 Optional ambient background music
 
-> Tip: Some browsers may block certain features (like file import/export or YouTube embeds) when opening an HTML file directly. If that happens, run a tiny local server:
+Bloomora runs entirely in the browser. No installation required.
 
-```bash
-# from the bloomora folder
-python -m http.server 8080
-```
+🚀 Getting Started
+Run Locally
 
-Then open `http://localhost:8080`.
+Clone the repository:
 
-## Data storage
+git clone https://github.com/yourusername/bloomora.git
 
-Everything is stored **locally in your browser** via `localStorage` under the key `bloomora_v1`.
+Open index.html in your browser
 
-- Export/Import uses a JSON backup file.
-- Reset clears the localStorage key.
+That’s it. No build step required.
+
+📖 How to Use
+1️⃣ Start Studying
+
+Set your session length
+
+Press start
+
+Stay focused until the timer ends
+
+2️⃣ Track Progress
+
+View your stats on the dashboard
+
+Build streaks by studying consistently
+
+Watch your island and garden grow as you progress
+
+3️⃣ Organize Sessions
+
+Create custom labels
+
+Assign labels to sessions
+
+Track performance by subject or category
+
+4️⃣ Backup Your Data
+
+Use Export to download a JSON backup
+
+Use Import to restore your progress anytime
+
+
+📜 License
+
+© 2026 Bloomora
+
+This project is copyrighted.
+
+You are permitted to:
+
+Modify the code
+
+Redistribute the code
+
+Use it for personal or educational purposes
+
+You may NOT:
+
+Sell this software
+
+Sell modified versions of this software
+
+Use this project for commercial resale
+
+This license applies to the original project and derivative works.
+
+For commercial use inquiries, please contact the repository owner.
