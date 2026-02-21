@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080">
+  <defs>
+    <linearGradient id="g1" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#0a1220"/>
+      <stop offset="0.55" stop-color="#1a2b3c"/>
+      <stop offset="1" stop-color="#0a0f12"/>
+    </linearGradient>
+    <filter id="blur" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="18"/>
+    </filter>
+  </defs>
+  <rect width="1920" height="1080" fill="url(#g1)"/>
+  <g filter="url(#blur)" opacity="0.45">
+    <circle cx="380" cy="220" r="220" fill="#7ad1c2" opacity="0.15"/>
+    <circle cx="1520" cy="260" r="300" fill="#a38bff" opacity="0.10"/>
+  </g>
+  <path d="M0,720 L340,420 L650,640 L920,360 L1200,610 L1480,420 L1920,710 L1920,1080 L0,1080 Z" fill="#081319"/>
+  <path d="M0,780 L300,540 L600,740 L920,470 L1180,720 L1500,540 L1920,770 L1920,1080 L0,1080 Z" fill="#0c1b23" opacity="0.95"/>
+  <path d="M860,390 L920,360 L980,420 L920,402 Z" fill="#eaf5ff" opacity="0.22"/>
+  <path d="M320,460 L340,420 L380,470 L345,460 Z" fill="#eaf5ff" opacity="0.18"/>
+</svg>
