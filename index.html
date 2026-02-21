@@ -1,0 +1,1120 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Bloomora — Study Timer + Gamified Progress (Local Only)</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  
+  <!-- Optional static background image layer (behind the video background) -->
+  <div id="imageBg" class="imageBg" aria-hidden="true"></div>
+
+  <div id="videoBg" class="videoBg hidden" aria-hidden="true">
+    <iframe id="videoBgFrame" title="LoFi video background" src="" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe>
+    <div class="videoBg__overlay" aria-hidden="true"></div>
+  </div>
+
+  <header class="topbar">
+    <div class="topbar__inner">
+      <a class="brand" href="#/dashboard" aria-label="Go to dashboard">
+        <span class="brand__icon" aria-hidden="true">
+          <!-- simple book icon -->
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M5 4.5C5 3.67157 5.67157 3 6.5 3H19C19.5523 3 20 3.44772 20 4V19.5C20 20.3284 19.3284 21 18.5 21H6.5C5.67157 21 5 20.3284 5 19.5V4.5Z" stroke="currentColor" stroke-width="1.6"/>
+            <path d="M8 6.5H17" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+            <path d="M8 9.5H16" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+            <path d="M5 18.2C6.2 17.4 7.6 17 9 17H20" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+          </svg>
+        </span>
+        <span class="brand__name">Bloomora</span>
+      </a>
+
+      <div class="topbar__clock" title="Local time">
+        <span class="dot" aria-hidden="true"></span>
+        <span id="navClock" class="mono">--:--</span>
+      </div>
+
+      <nav id="navLinks" class="nav" aria-label="Primary navigation">
+        <a class="nav__link active" data-link href="#/dashboard">Dashboard</a>
+        <a class="nav__link" data-link href="#/timer">Timer</a>
+        <a class="nav__link" data-link href="#/labels">Labels</a>
+        <a class="nav__link" data-link href="#/island">Island</a>
+        <a class="nav__link" data-link href="#/garden">Garden</a>
+      </nav>
+
+      <div class="topbar__right">
+        <a class="pill" data-link href="#/stats">
+          <span class="pill__icon" aria-hidden="true">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M4 19V5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+              <path d="M4 19H20" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+              <path d="M7 14.5L11 10.5L14 13.5L19 7.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </span>
+          <span>Your Stats</span>
+        </a>
+
+        <button id="openAccount" class="avatar" title="Account" aria-label="Account">
+          <span class="avatar__letter" aria-hidden="true">👤</span>
+        </button>
+
+        <button id="openAppSettings" class="avatar" title="Settings" aria-label="Open settings">
+          <span class="avatar__letter" aria-hidden="true">⚙️</span>
+        </button>
+
+        <button id="openSettings" class="avatar" title="Music" aria-label="Open music">
+          <span class="avatar__letter" id="avatarLetter">♪</span>
+        </button>
+
+        <button id="toggleFullscreen" class="avatar" title="Fullscreen" aria-label="Toggle fullscreen">
+          <span class="avatar__letter" aria-hidden="true">⛶</span>
+        </button>
+      </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="container" id="app">
+
+    <!-- DASHBOARD -->
+    <!-- Fallback: keep dashboard visible even if JS fails to boot. JS will manage routing once loaded. -->
+    <section class="page active" id="page-dashboard" data-route="dashboard">
+      <div class="page__header">
+        <div>
+          <h1 class="page__title"><span id="dashName">Your</span> Dashboard</h1>
+          <p class="page__subtitle">Track your study progress, build streaks, and grow your world — all stored locally on this device.</p>
+        </div>
+        <div class="page__headerRight">
+          <span class="badge badge--streak" id="dashStreakBadge" title="Current streak">
+            <span aria-hidden="true">🔥</span>
+            <span class="mono"><span id="dashStreak">0</span> day streak</span>
+          </span>
+        <span class="badge badge--today" id="dashTodayBadge" title="Studied today">
+            <span aria-hidden="true">🗓️</span>
+            <span class="mono" id="dashTodayText">0h 0m today</span>
+          </span>
+        </div>
+      </div>
+
+      <div class="card" aria-label="Study progress">
+        <div class="card__header">
+          <div>
+            <h3 class="card__title">Study Progress</h3>
+            <p class="card__subtitle"><span id="studyLevelText">Level 0</span> • <span id="studyTotalText">0m total</span></p>
+          </div>
+          <div class="kpi kpi--right">
+            <div class="kpi__value" id="studyNextPercent">0%</div>
+            <div class="kpi__label">to next level</div>
+          </div>
+        </div>
+        <div class="progress progress--lg">
+          <div class="progress__bar">
+            <div class="progress__fill" id="studyLevelFill" style="width:0%"></div>
+          </div>
+          <div class="progress__meta"><span id="studyLevelMeta">0h left to level 1</span></div>
+        </div>
+      </div>
+
+      <div class="grid grid--4">
+        <div class="card kpiCard">
+          <div class="kpiCard__top">
+            <div class="kpiIcon" aria-hidden="true">⏱️</div>
+            <div class="kpiCard__label">Total Study Time</div>
+          </div>
+          <div class="kpiCard__value" id="kpiTotal">0m</div>
+          <div class="kpiCard__hint"><span id="kpiSessions">0</span> sessions</div>
+        </div>
+        <div class="card kpiCard">
+          <div class="kpiCard__top">
+            <div class="kpiIcon" aria-hidden="true">📈</div>
+            <div class="kpiCard__label">This Week</div>
+          </div>
+          <div class="kpiCard__value" id="kpiWeek">0m</div>
+          <div class="kpiCard__hint"><span id="kpiActiveDaysWeek">0</span> active days</div>
+        </div>
+        <div class="card kpiCard">
+          <div class="kpiCard__top">
+            <div class="kpiIcon" aria-hidden="true">🗓️</div>
+            <div class="kpiCard__label">This Month</div>
+          </div>
+          <div class="kpiCard__value" id="kpiMonth">0m</div>
+          <div class="kpiCard__hint"><span id="kpiActiveDaysMonth">0</span> active days</div>
+        </div>
+        <div class="card kpiCard">
+          <div class="kpiCard__top">
+            <div class="kpiIcon" aria-hidden="true">🎯</div>
+            <div class="kpiCard__label">Avg Session</div>
+          </div>
+          <div class="kpiCard__value" id="kpiAvg">0m</div>
+          <div class="kpiCard__hint">per study session</div>
+        </div>
+      </div>
+
+      <div class="card" aria-label="Study activity">
+        <div class="card__header card__header--split">
+          <div>
+            <h3 class="card__title"><span id="yearTotalText">0m</span> studied in <span id="yearLabel">2026</span></h3>
+            <p class="card__subtitle"><span id="yearSessionText">0</span> sessions • <span id="yearActiveDaysText">0</span> active days</p>
+          </div>
+          <div class="row row--tight">
+            <select class="select" id="yearSelect" aria-label="Select year"></select>
+            <button class="btn btn--ghost" id="jumpToToday">Today</button>
+          </div>
+        </div>
+
+        <div class="activity">
+          <div class="activity__heatmap" id="heatmap"></div>
+          <div class="activity__legend">
+            <span class="muted">Less</span>
+            <span class="legendSquares" aria-hidden="true">
+              <span class="sq sq--0"></span><span class="sq sq--1"></span><span class="sq sq--2"></span><span class="sq sq--3"></span><span class="sq sq--4"></span>
+            </span>
+            <span class="muted">More</span>
+          </div>
+
+          <div class="divider divider--lg"></div>
+
+          <div class="card__header">
+            <h4 class="card__title">Study Activity Over Time</h4>
+            <div class="row row--tight">
+              <button class="chipBtn chipBtn--active" data-month-view="months">Months</button>
+              <button class="chipBtn" data-month-view="days">Last 14 days</button>
+            </div>
+          </div>
+          <div id="chartArea" class="chartArea"></div>
+        </div>
+      </div>
+
+      <div class="card" aria-label="Recent sessions">
+        <div class="card__header card__header--split">
+          <div>
+            <h3 class="card__title">Recent Sessions</h3>
+            <p class="card__subtitle">Your latest saved study sessions (stored locally).</p>
+          </div>
+          <div class="row row--tight">
+            <button class="btn btn--ghost" id="exportJsonBtn">Export</button>
+            <button class="btn btn--ghost" id="importJsonBtn">Import</button>
+            <input type="file" id="importFileHidden" accept="application/json,.json" class="hidden" />
+          </div>
+        </div>
+        <div id="recentSessions" class="sessionList" role="list"></div>
+      </div>
+    </section>
+
+    <!-- TIMER -->
+    <section class="page page--timer" id="page-timer" data-route="timer">
+      <div class="timerShell">
+        <div class="timerShell__top">
+          <div class="segmented segmented--timer" role="tablist" aria-label="Timer modes">
+            <button class="segmented__btn segmented__btn--active" data-timer-tab="timer" role="tab" aria-selected="true">
+              <span class="segmented__icon" aria-hidden="true">⏱️</span>
+              <span>Timer</span>
+            </button>
+            <button class="segmented__btn" data-timer-tab="clock" role="tab" aria-selected="false">
+              <span class="segmented__icon" aria-hidden="true">🕒</span>
+              <span>Clock</span>
+            </button>
+            <button class="segmented__btn" data-timer-tab="pomodoro" role="tab" aria-selected="false">
+              <span class="segmented__icon" aria-hidden="true">🍅</span>
+              <span>Pomodoro</span>
+            </button>
+            <button class="segmented__btn" data-timer-tab="stopwatch" role="tab" aria-selected="false">
+              <span class="segmented__icon" aria-hidden="true">⏲️</span>
+              <span>Stopwatch</span>
+            </button>
+          </div>
+
+          <button class="backBtn" data-go="dashboard" title="Back to dashboard" aria-label="Back">
+            <span aria-hidden="true">←</span>
+          </button>
+        </div>
+
+        <div class="timerShell__content">
+
+          <!-- Countdown Timer -->
+<div class="timerView timerView--countdown" data-timer-view="timer">
+
+  <div class="timerMetaTop">
+    <div class="metaPill">
+      <span class="metaPill__label">Label</span>
+      <select class="input input--select input--sm" id="cdLabel"></select>
+    </div>
+  </div>
+
+  <div class="timerCircle timerCircle--main">
+    <div class="cdSet" id="cdSetPanel">
+      <div class="timerCircle__label">SET DURATION</div>
+
+      <div class="timerSet__grid timerSet__grid--tight">
+        <div>
+          <input class="input input--square" id="cdHours" inputmode="numeric" type="number" min="0" max="23" value="0" />
+          <div class="timerSet__label">HOURS</div>
+        </div>
+        <div>
+          <input class="input input--square" id="cdMinutes" inputmode="numeric" type="number" min="0" max="59" value="0" />
+          <div class="timerSet__label">MINUTES</div>
+        </div>
+        <div>
+          <input class="input input--square" id="cdSeconds" inputmode="numeric" type="number" min="0" max="59" value="0" />
+          <div class="timerSet__label">SECONDS</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="cdRun hidden" id="cdRunPanel" aria-live="polite">
+      <div class="cdTime" id="cdDisplay">00:00:00</div>
+      <div class="cdStatus" id="cdStatus">READY</div>
+    </div>
+  </div>
+
+  <div class="timerPrimary" id="cdStartRow">
+    <button class="btn btn--white btn--wide" id="cdStart">▶ Start Timer</button>
+  </div>
+
+  <div class="timerActions timerActions--timerPills hidden" id="cdRunActions">
+    <button class="btn btn--white btn--bigPill" id="cdPause" disabled>⏸ Pause</button>
+    <button class="btn btn--ghost btn--bigPill" id="cdReset">↻ Reset</button>
+  </div>
+
+  <div class="timerActions hidden" id="cdSaveRow">
+    <button class="btn btn--primary btn--wide" id="cdSave" disabled>End &amp; Save</button>
+  </div>
+
+  <div class="timerDock" aria-label="Focus controls">
+    <button class="dockPill" id="openTasksBtn">☰ Tasks</button>
+</div>
+
+  <div class="timerQuote">
+    <div class="timerQuote__text" id="timerQuoteText">"The secret of getting ahead is getting started."</div>
+    <div class="timerQuote__author muted small" id="timerQuoteAuthor">— Mark Twain</div>
+  </div>
+
+</div>
+<!-- Clock -->
+          <div class="timerView hidden" data-timer-view="clock">
+            <div class="bigTimer bigTimer--thin" id="clockTime">--:--</div>
+            <div class="clockAmPm" id="clockAmPm">--</div>
+            <div class="clockDate" id="clockDate">—</div>
+
+            <div class="quoteBlock">
+              <p class="quote" id="clockQuote">Time is what we want most, but what we use worst.</p>
+              <p class="muted small" id="clockAuthor">— William Penn</p>
+            </div>
+          </div>
+
+          <!-- Pomodoro -->
+          <div class="timerView hidden" data-timer-view="pomodoro">
+            <div class="pomodoroTop">
+              <span class="chip" id="pomPhaseChip">Focus Time</span>
+              <span class="muted small">Session <span id="pomSessionCount">1</span></span>
+              <button class="iconBtn" id="pomSettings" aria-label="Pomodoro settings">⚙️</button>
+            </div>
+
+            <div class="bigTimer bigTimer--thin mono" id="pomDisplay">25:00</div>
+
+            <div class="timerActions timerActions--tight">
+              <button class="btn btn--primary" id="pomStart">Start</button>
+              <button class="btn btn--ghost" id="pomReset">Reset</button>
+              <button class="btn btn--ghost" id="pomSkip">Skip</button>
+            </div>
+
+            <div class="timerMetaRow">
+              <div class="metaField">
+                <span class="metaField__label">Label</span>
+                <select class="input input--select" id="pomLabel"></select>
+              </div>
+            </div>
+
+            <div class="timerActions timerActions--tight">
+              <button class="btn btn--soft" id="pomSave">End &amp; Save Focus</button>
+            </div>
+
+            <p class="muted small centerText">Pomodoro auto-saves full focus sessions. Use <strong>End &amp; Save Focus</strong> to save early.</p>
+          </div>
+
+          <!-- Stopwatch -->
+          <div class="timerView hidden" data-timer-view="stopwatch">
+            <div class="bigTimer bigTimer--thin mono" id="swDisplay">00:00:00</div>
+
+            <div class="progressStack" aria-label="Progress bars">
+              <div id="swCapBlock">
+                <div class="progressTrack">
+                  <div class="progressFill progressFill--orange" id="swCapFill" style="width:0%"></div>
+                </div>
+                <div class="progressMeta">
+                  <span class="muted small">Session cap</span>
+                  <span class="muted small mono" id="swCapMeta">0%</span>
+                </div>
+              </div>
+
+              <div class="progressTrack">
+                <div class="progressFill progressFill--green" id="swWeekFill" style="width:0%"></div>
+              </div>
+              <div class="progressMeta">
+                <span class="muted small">Weekly goal</span>
+                <span class="muted small mono" id="swWeekMeta">0%</span>
+              </div>
+            </div>
+
+            <div class="timerActions timerActions--big">
+              <button class="btn btn--big btn--primary" id="swStart">Start</button>
+              <button class="btn btn--big btn--primary hidden" id="swPause">Pause</button>
+            </div>
+
+            <div class="timerActions timerActions--tight">
+              <button class="btn btn--soft" id="swEnd" disabled>End &amp; Save</button>
+              <button class="btn btn--danger" id="swReset">Reset</button>
+            </div>
+
+            <div class="timerMetaRow">
+              <div class="metaField">
+                <span class="metaField__label">Label</span>
+                <select class="input input--select" id="swLabel"></select>
+              </div>
+            </div>
+
+            <p class="muted small centerText">Tip: Your session is saved only when you click <strong>End &amp; Save</strong>.</p>
+          </div>
+
+        </div>
+      </div>
+    </section>
+
+    <!-- LABELS -->
+    <section class="page" id="page-labels" data-route="labels">
+      <div class="page__header page__header--spread">
+        <div>
+          <h1 class="page__title">Labels</h1>
+          <p class="page__subtitle">Organize your study sessions with custom labels.</p>
+        </div>
+        <div class="page__headerRight">
+          <button class="btn btn--white" id="openLabelModal">＋ New Label</button>
+        </div>
+      </div>
+
+      <div class="labelsToolbar">
+        <div class="row row--tight">
+          <span class="muted small">View:</span>
+          <button class="chipBtn chipBtn--active" data-label-view="grid" id="labelsViewGrid">Grid</button>
+          <button class="chipBtn" data-label-view="list" id="labelsViewList">List</button>
+        </div>
+        <div class="row row--tight">
+          <span class="muted small">Sort:</span>
+          <button class="chipBtn chipBtn--active" data-label-sort="name" id="labelsSortName">Name</button>
+          <button class="chipBtn" data-label-sort="date" id="labelsSortDate">Date</button>
+        </div>
+      </div>
+
+      <div class="card labelsCard">
+        <div class="labelsEmpty" id="labelsEmpty">
+          <div class="labelsEmpty__icon" aria-hidden="true">🏷️</div>
+          <div class="labelsEmpty__title">No labels yet</div>
+          <div class="muted">Create your first label to organize your study sessions</div>
+          <button class="btn btn--white" id="openLabelModal2">＋ Create Label</button>
+        </div>
+
+        <div class="labelsGrid" id="labelsGrid"></div>
+      </div>
+    </section>
+
+    <!-- ISLAND -->
+    <section class="page" id="page-island" data-route="island">
+      <div class="page__header">
+        <div>
+          <h1 class="page__title">Island Upgrades</h1>
+          <p class="page__subtitle">Your island upgrades as you study. Every <b>5 hours</b> unlocks a new upgrade.</p>
+        </div>
+        <div class="page__headerRight">
+          <a class="btn btn--primary" href="#/timer">Start studying</a>
+        </div>
+      </div>
+
+      <div class="grid grid--2">
+        <div class="card">
+          <div class="card__header">
+            <div>
+              <h3 class="card__title">Island Level</h3>
+              <p class="card__subtitle"><span id="islandLevelText">Level 0</span> • <span id="islandTotalText">0m</span> total island XP</p>
+            </div>
+            <div class="kpi kpi--right">
+              <div class="kpi__value" id="islandNextPercent">0%</div>
+              <div class="kpi__label">to next upgrade</div>
+            </div>
+          </div>
+          <div class="progress progress--lg">
+            <div class="progress__bar"><div class="progress__fill" id="islandFill" style="width:0%"></div></div>
+            <div class="progress__meta"><span id="islandMeta">0h left to level 1</span></div>
+          </div>
+
+          <div class="divider"></div>
+          <div class="upgradeList" id="islandUpgrades"></div>
+        </div>
+
+        <div class="card islandCard">
+          <div class="card__header">
+            <h3 class="card__title">Your Island</h3>
+          </div>
+
+          <div class="islandWrap">
+                        <img id="islandSprite" class="sceneSprite" alt="Island" src="assets/images/island_01.png" />
+          </div>
+
+          <div class="islandHint">
+            <span class="muted">Unlocked upgrades:</span> <span id="islandUnlocked">0</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="card islandRecapCard">
+        <div class="islandRecapCenter">
+          <div class="islandRecapText" id="islandRecapText">You've logged 0 sessions totalling 0h</div>
+          <div class="islandRecapArt" id="islandRecapArt" aria-hidden="true"></div>
+          <div class="islandRecapChips" id="islandRecapChips"></div>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- GARDEN -->
+    <section class="page" id="page-garden" data-route="garden">
+      <div class="page__header">
+        <div>
+          <h1 class="page__title">Garden</h1>
+          <p class="page__subtitle">Grow a seed into a tree as you study. When it matures, fruits will grow — harvest them into your collection.</p>
+        </div>
+        <div class="page__headerRight">
+          <a class="btn btn--primary" href="#/timer">Start studying</a>
+        </div>
+      </div>
+
+      <div class="grid grid--2">
+        <div class="card">
+          <div class="card__header">
+            <div>
+              <h3 class="card__title">Current Plant</h3>
+              <p class="card__subtitle">Type: <span id="treeTypeText" class="chip">Apple</span> • Stage: <span id="treeStageText">Seed</span></p>
+            </div>
+            <div class="row row--tight">
+              <select class="select" id="treeTypeSelect" aria-label="Choose tree type">
+                <option value="Apple">Apple</option>
+                <option value="Orange">Orange</option>
+                <option value="Cherry">Cherry</option>
+                <option value="Mango">Mango</option>
+                <option value="Peach">Peach</option>
+              </select>
+              <button class="btn btn--ghost" id="restartTree">Restart</button>
+            </div>
+          </div>
+
+          <div class="progress progress--lg">
+            <div class="progress__bar"><div class="progress__fill" id="treeFill" style="width:0%"></div></div>
+            <div class="progress__meta"><span id="treeMeta">0% to next stage</span></div>
+          </div>
+
+          <div class="divider"></div>
+
+          <div class="row row--tight">
+            <div>
+              <div class="muted">Fruits ready</div>
+              <div class="bigNumber" id="fruitReadyText">0</div>
+            </div>
+          </div>
+
+          <div class="row row--tight">
+            <button class="btn btn--primary" id="harvestBtn" disabled>Harvest</button>
+          </div>
+
+          <div class="divider"></div>
+
+          <h4 class="card__title">Fruit Collection</h4>
+          <div class="collection" id="fruitCollection"></div>
+        </div>
+
+        <div class="card">
+          <div class="card__header">
+            <h3 class="card__title">Growth</h3>
+          </div>
+
+          <div class="treeWrap">
+                        <img id="treeSprite" class="sceneSprite" alt="Tree" src="assets/images/plant_seed.png" />
+          </div>
+
+        </div>
+      </div>
+    </section>
+
+    <!-- STATS -->
+    <section class="page" id="page-stats" data-route="stats">
+      <div class="page__header">
+        <div>
+          <h1 class="page__title">Your Study Statistics</h1>
+          <p class="page__subtitle">See your progress, streaks, and how your time is trending.</p>
+        </div>
+        <div class="page__headerRight">
+          
+        </div>
+      </div>
+
+      <div class="tabs" role="tablist" aria-label="Stats range">
+        <button class="tab tab--active" data-stats-range="today">Today</button>
+        <button class="tab" data-stats-range="week">This Week</button>
+        <button class="tab" data-stats-range="month">This Month</button>
+        <button class="tab" data-stats-range="all">All Time</button>
+      </div>
+
+      <div class="card streakCard">
+        <div class="streakCard__left">
+          <div class="streakBig" id="statsStreakBig">0 Days</div>
+          <div class="streakSmall">Current Streak 🔥</div>
+        </div>
+        <div class="streakCard__right">
+          <div class="muted">Longest Streak</div>
+          <div class="streakLongest" id="statsLongest">0 Days</div>
+          <div class="muted small" id="statsLongestHint">Keep it going.</div>
+        </div>
+      </div>
+
+      <div class="grid grid--5">
+        <div class="card kpiCard">
+          <div class="kpiCard__top"><div class="kpiIcon" aria-hidden="true">⏱️</div><div class="kpiCard__label">Total Study Time</div></div>
+          <div class="kpiCard__value" id="statsTotal">0m</div>
+          <div class="kpiCard__hint"><span id="statsSessions">0</span> sessions</div>
+        </div>
+        <div class="card kpiCard">
+          <div class="kpiCard__top"><div class="kpiIcon" aria-hidden="true">🗓️</div><div class="kpiCard__label">Study time today</div></div>
+          <div class="kpiCard__value" id="statsIsland">0m</div>
+          <div class="kpiCard__hint" id="statsIslandLvl">Level 0</div>
+        </div>
+        <div class="card kpiCard">
+          <div class="kpiCard__top"><div class="kpiIcon" aria-hidden="true">🏝️</div><div class="kpiCard__label">Island level</div></div>
+          <div class="kpiCard__value" id="statsGarden">0m</div>
+          <div class="kpiCard__hint" id="statsGardenStage">Seed</div>
+        </div>
+        <div class="card kpiCard">
+          <div class="kpiCard__top"><div class="kpiIcon" aria-hidden="true">🎯</div><div class="kpiCard__label">Average Session</div></div>
+          <div class="kpiCard__value" id="statsAvg">0m</div>
+          <div class="kpiCard__hint">per session</div>
+        </div>
+        <div class="card kpiCard">
+          <div class="kpiCard__top"><div class="kpiIcon" aria-hidden="true">🏆</div><div class="kpiCard__label">Fruits Collected</div></div>
+          <div class="kpiCard__value" id="statsFruits">0</div>
+          <div class="kpiCard__hint">total harvested</div>
+        </div>
+      </div>
+
+
+      <div class="grid grid--2">
+        <div class="card calendarCard">
+          <div class="card__header card__header--split">
+            <div>
+              <h3 class="card__title">Calendar</h3>
+              <p class="card__subtitle" id="calendarMonthLabel">This month</p>
+            </div>
+          </div>
+
+          <div id="calendarWidget" class="calendarWidget" aria-label="Calendar view"></div>
+        </div>
+
+        <div class="card radarCard">
+          <div class="card__header">
+            <h3 class="card__title">Week</h3>
+            <p class="card__subtitle">See which days you focus most.</p>
+          </div>
+
+          <div class="radarWrap">
+            <canvas id="weekRadar" width="360" height="360" aria-label="Weekly radar chart" role="img"></canvas>
+          </div>
+
+          <div class="radarMeta">
+            <div>
+              <div class="muted small">Session Average (week)</div>
+              <div class="bigNumber" id="weekAvgText">0m</div>
+            </div>
+            <div>
+              <div class="muted small">Sessions this week</div>
+              <div class="bigNumber" id="weekSessionsText">0</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card__header card__header--split">
+          <div>
+            <h3 class="card__title">Study Activity</h3>
+            <p class="card__subtitle">Daily focus time trend.</p>
+          </div>
+          <div class="row row--tight">
+            <button class="chipBtn" data-days="7">7D</button>
+            <button class="chipBtn chipBtn--active" data-days="14">14D</button>
+            <button class="chipBtn" data-days="30">30D</button>
+            <button class="chipBtn" data-days="90">90D</button>
+          </div>
+        </div>
+        <div id="statsChart" class="chartArea"></div>
+      </div>
+
+      <div class="card">
+        <div class="card__header">
+          <h3 class="card__title">Weekly Goal</h3>
+          <p class="card__subtitle">Set your goal in Settings. The dashboard shows your progress.</p>
+        </div>
+        <div class="row row--spread">
+          <div>
+            <div class="muted">Goal</div>
+            <div class="bigNumber" id="weeklyGoalNumber">0h</div>
+          </div>
+          <div>
+            <div class="muted">This week</div>
+            <div class="bigNumber" id="weeklyGoalCurrent">0h</div>
+          </div>
+        </div>
+        <div class="progress progress--lg">
+          <div class="progress__bar"><div class="progress__fill" id="weeklyGoalFill2" style="width:0%"></div></div>
+          <div class="progress__meta"><span id="weeklyGoalMeta2">0%</span></div>
+        </div>
+      </div>
+      <div class="grid grid--2" style="margin-top:14px">
+        <div class="card">
+          <div class="card__header">
+            <div>
+              <h3 class="card__title">Study heatmap</h3>
+              <p class="muted small">Last 12 months — darker means more study.</p>
+            </div>
+          </div>
+          <div class="heatmapWrap">
+            <canvas id="heatmapCanvas" width="760" height="180" aria-label="Study heatmap"></canvas>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card__header">
+            <div>
+              <h3 class="card__title">Best times</h3>
+              <p class="muted small">When you’re most consistent.</p>
+            </div>
+          </div>
+          <div class="kpiList">
+            <div class="kpiRow"><span class="muted">Most productive day</span><strong id="bestDay">—</strong></div>
+            <div class="kpiRow"><span class="muted">Most productive hour</span><strong id="bestHour">—</strong></div>
+            <div class="kpiRow"><span class="muted">Longest session</span><strong id="longestSession">—</strong></div>
+            <div class="kpiRow"><span class="muted">Consistency (7d)</span><strong id="consistency7d">—</strong></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid" style="margin-top:14px">
+        <div class="card">
+          <div class="card__header">
+            <div>
+              <h3 class="card__title">Hourly productivity</h3>
+              <p class="muted small">Total minutes by hour of day.</p>
+            </div>
+          </div>
+          <canvas id="hourlyCanvas" width="1120" height="260" aria-label="Hourly productivity chart"></canvas>
+        </div>
+
+        <div class="card">
+          <div class="card__header">
+            <div>
+              <h3 class="card__title">Session lengths</h3>
+              <p class="muted small">Distribution of your session durations.</p>
+            </div>
+          </div>
+          <canvas id="distCanvas" width="1120" height="260" aria-label="Session length distribution"></canvas>
+        </div>
+      </div>
+
+      <div class="grid grid--2" style="margin-top:14px">
+        <div class="card">
+          <div class="card__header">
+            <div>
+              <h3 class="card__title">Labels breakdown</h3>
+              <p class="muted small">Where your time goes.</p>
+            </div>
+          </div>
+          <div id="labelBreakdown" class="breakdown"></div>
+        </div>
+
+        <div class="card">
+          <div class="card__header">
+            <div>
+              <h3 class="card__title">Study time by course</h3>
+              <p class="muted small">Total hours per label (horizontal bars).</p>
+            </div>
+          </div>
+          <canvas id="courseCanvas" width="760" height="320" aria-label="Study time by course chart"></canvas>
+        </div>
+
+        <div class="card" style="grid-column: 1 / -1;">
+          <div class="card__header">
+            <div>
+              <h3 class="card__title">Trend</h3>
+              <p class="muted small">Study time over the last 30 days.</p>
+            </div>
+          </div>
+          <canvas id="trendCanvas" width="1120" height="260" aria-label="30 day trend chart"></canvas>
+        </div>
+      </div>
+
+
+    </section>
+
+    <!-- SETTINGS MODAL REMOVED (superseded by Music modal later) -->
+<!-- Ambient audio (local files) -->
+
+<!-- POMODORO SETTINGS MODAL -->
+<div class="modal hidden" id="pomSettingsModal" role="dialog" aria-modal="true" aria-labelledby="pomSettingsTitle">
+  <div class="modal__backdrop" data-close-modal="pom"></div>
+  <div class="modal__panel">
+    <div class="modal__header">
+      <h2 id="pomSettingsTitle">Pomodoro settings</h2>
+      <button class="iconBtn" data-close-modal="pom" aria-label="Close pomodoro settings">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M6 6L18 18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+          <path d="M18 6L6 18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+        </svg>
+      </button>
+    </div>
+
+    <div class="modal__content">
+      <div class="formRow">
+        <label class="label" for="pomFocusInput">Focus (minutes)</label>
+        <input class="input" id="pomFocusInput" type="number" min="1" max="240" step="1" />
+      </div>
+
+      <div class="formRow">
+        <label class="label" for="pomShortInput">Short break (minutes)</label>
+        <input class="input" id="pomShortInput" type="number" min="1" max="60" step="1" />
+      </div>
+
+      <div class="formRow">
+        <label class="label" for="pomLongInput">Long break (minutes)</label>
+        <input class="input" id="pomLongInput" type="number" min="1" max="120" step="1" />
+      </div>
+
+      <div class="formRow">
+        <label class="label" for="pomEveryInput">Long break every (focus sessions)</label>
+        <input class="input" id="pomEveryInput" type="number" min="2" max="12" step="1" />
+      </div>
+
+      <div class="muted small" style="margin-top:10px;">
+        Changes apply immediately and reset the current Pomodoro cycle.
+      </div>
+    </div>
+
+    <div class="modal__footer">
+      <button class="btn btn--ghost" data-close-modal="pom">Cancel</button>
+      <button class="btn btn--primary" id="pomSaveSettingsBtn">Save</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- TASKS DRAWER -->
+    <div id="tasksModal" class="modal modal--drawer hidden" role="dialog" aria-modal="true" aria-labelledby="tasksTitle">
+      <div class="modal__panel modal__panel--drawer">
+        <div class="modal__header">
+          <div class="modal__title" id="tasksTitle">Todo List</div>
+          <button class="iconBtn" id="closeTasks" aria-label="Close">✕</button>
+        </div>
+        <div class="modal__content">
+          <div class="taskForm">
+            <button class="btn btn--ghost" id="newListBtn" style="width:100%;">New List</button>
+            <div class="taskForm__row">
+              <button class="btn btn--ghost" id="clearAllTasks" style="flex:1;">Clear all</button>
+              <button class="btn btn--ghost" id="clearDoneTasks" style="flex:1;">Clear done</button>
+            </div>
+            <button class="btn btn--ghost" id="addTaskToggle" style="width:100%;text-align:left;">+ Add New Task</button>
+            <div id="taskComposer" class="taskComposer hidden">
+              <input id="taskInput" class="input" placeholder="Task title (e.g., Study Math)" maxlength="80" />
+              <textarea id="taskDesc" class="input" placeholder="Description (optional)" rows="3" maxlength="220"></textarea>
+              <div class="taskForm__row">
+                <select id="taskLabel" class="select" style="flex:1;"></select>
+                <button class="btn btn--primary" id="addTaskBtn">Add</button>
+              </div>
+            </div>
+          </div>
+          <div id="tasksList" class="tasksList"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- APP SETTINGS MODAL -->
+    <div class="modal hidden" id="appSettingsModal" role="dialog" aria-modal="true" aria-labelledby="appSettingsTitle">
+      <div class="modal__backdrop" data-close-modal="appSettings"></div>
+      <div class="modal__panel" style="max-width:980px;">
+        <div class="modal__header">
+          <div class="modal__title" id="appSettingsTitle">Settings</div>
+          <button class="iconBtn" data-close-modal="appSettings" aria-label="Close">✕</button>
+        </div>
+        <div class="modal__content">
+          <div class="grid grid--2" style="gap:14px;">
+            <div>
+              <div class="formRow">
+                <label class="label" for="settingsName">Name</label>
+                <input class="input" id="settingsName" maxlength="28" />
+              </div>
+              <div class="formRow">
+                <label class="label" for="settingsWeeklyGoal">Weekly goal (hours)</label>
+                <input class="input" id="settingsWeeklyGoal" type="number" min="0" max="168" step="1" />
+              </div>
+              <div class="formRow">
+                <label class="label" for="settingsTheme">Theme</label>
+                <select class="select" id="settingsTheme">
+                  <option value="midnight">Midnight</option>
+                  <option value="violet">Violet</option>
+                  <option value="emerald">Emerald</option>
+                  <option value="ocean">Ocean</option>
+                  <option value="sunset">Sunset</option>
+                </select>
+              </div>
+
+              <div class="formRow">
+                <label class="label" for="settingsBgChoice">Background image</label>
+                <select class="select" id="settingsBgChoice">
+                  <option value="black">Black (default)</option>
+                  <option value="nature_forest">Nature — Forest Lake</option>
+                  <option value="nature_mountains">Nature — Misty Mountains</option>
+                  <option value="nature_ocean">Nature — Calm Ocean</option>
+                  <option value="abstract_waves">Abstract — Soft Waves</option>
+                  <option value="abstract_shapes">Abstract — Floating Shapes</option>
+                  <option value="abstract_nebula">Abstract — Night Nebula</option>
+                  <option value="custom">Custom upload…</option>
+                </select>
+                <div id="settingsBgUploadRow" class="hidden" style="margin-top:10px;">
+                  <input class="input" id="settingsBgUpload" type="file" accept="image/*" />
+                  <p class="muted small" style="margin:8px 0 0;">Your custom background is stored locally on this device.</p>
+                </div>
+              </div>
+              
+              <div class="formRow">
+                <label class="label" for="settingsVideoVis">Background video visibility</label>
+                <input class="input" id="settingsVideoVis" type="range" min="0" max="100" step="1" />
+                <div class="row row--tight" style="justify-content:space-between; margin-top:6px;">
+                  <span class="muted small">More transparent UI → clearer video</span>
+                  <span class="muted small mono" id="settingsVideoVisVal">0%</span>
+                </div>
+              </div>
+
+              <div class="formRow">
+                <label class="label">Stopwatch session cap</label>
+                <div class="row row--tight" style="align-items:center; gap:10px;">
+                  <label class="row" style="gap:8px; align-items:center; margin:0;">
+                    <input id="settingsSwCapOn" type="checkbox" />
+                    <span class="muted">Enable cap</span>
+                  </label>
+                  <div class="row row--tight" style="align-items:center; gap:8px; margin-left:auto;">
+                    <span class="muted small">Cap</span>
+                    <input class="input" id="settingsSwCapHours" type="number" min="1" max="24" step="1" style="width:90px;" />
+                    <span class="muted small">hours</span>
+                  </div>
+                </div>
+              </div>
+              <p class="muted small">All settings are stored locally on this device.</p>
+            </div>
+            <div>
+              <div class="card" style="margin:0;">
+                <div class="card__header">
+                  <div>
+                    <h3 class="card__title">Add study time manually</h3>
+                    <p class="card__subtitle">If you forgot to start a timer, add a session here (min 1 minute).</p>
+                  </div>
+                </div>
+                <div class="card__body">
+                  <div class="row row--tight" style="align-items:flex-end; gap:10px;">
+                    <div style="flex:1;">
+                      <label class="label" for="manualHours">Hours</label>
+                      <input class="input" id="manualHours" type="number" min="0" max="23" step="1" value="0" />
+                    </div>
+                    <div style="flex:1;">
+                      <label class="label" for="manualMinutes">Minutes</label>
+                      <input class="input" id="manualMinutes" type="number" min="0" max="59" step="1" value="0" />
+                    </div>
+                    <div style="flex:2;">
+                      <label class="label" for="manualLabel">Label</label>
+                      <select class="select" id="manualLabel"></select>
+                    </div>
+                  </div>
+                  <div class="row row--tight" style="margin-top:12px; justify-content:flex-end;">
+                    <button class="btn btn--primary" id="manualAddBtn">Add session</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+<div class="modal__footer">
+          <button class="btn btn--danger" id="resetStatsBtn">Reset stats</button>
+          <button class="btn btn--ghost" data-close-modal="appSettings">Close</button>
+          <button class="btn btn--primary" id="saveAppSettings">Save</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- LABEL MODAL -->
+    <div class="modal hidden" id="labelModal" role="dialog" aria-modal="true" aria-labelledby="labelTitle">
+      <div class="modal__panel">
+        <div class="modal__header">
+          <div class="modal__title" id="labelTitle">Create Label</div>
+          <button class="iconBtn" id="closeLabel" aria-label="Close">✕</button>
+        </div>
+        <div class="modal__content">
+          <label class="label">Name</label>
+          <input id="labelNameInput" class="input" placeholder="e.g., Maths" maxlength="18" />
+          <label class="label" style="margin-top:12px;">Color</label>
+          <input id="labelColorInput" type="hidden" value="#a855f7" />
+          <div class="colorGrid" id="labelColorGrid"></div>
+        </div>
+<div class="modal__footer">
+          <button class="btn btn--ghost" id="cancelLabel">Cancel</button>
+          <button class="btn btn--primary" id="createLabel">Create Label</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- MUSIC MODAL (opened from top-bar music icon) -->
+    <div class="modal hidden" id="musicModal" role="dialog" aria-modal="true" aria-labelledby="musicTitle">
+      <div class="modal__panel" style="max-width:980px;">
+        <div class="modal__header">
+          <div class="modal__title" id="musicTitle">Music</div>
+          <button class="iconBtn" id="musicModalClose" data-close-modal="music" aria-label="Close">✕</button>
+        </div>
+        <div class="modal__content">
+          <div id="musicNotice" class="muted" style="margin-bottom:12px;">
+            LoFi Girl is streamed from YouTube. Your study data stays local.
+          </div>
+
+          <div class="row" style="gap:10px; align-items:center; flex-wrap:wrap; margin-bottom:12px;">
+            <span class="label" style="margin:0;">Track</span>
+            <select id="lofiPresetSelect" class="select" style="min-width:190px;">
+              <option value="CFGLoQIhmow">LoFi Girl — 1</option>
+              <option value="4xDzrJKXOOY">LoFi Girl — 2</option>
+              <option value="CBSlu_VMS9U">LoFi Girl — 3</option>
+              <option value="cyzx45mupcQ">LoFi Girl — 4</option>
+              <option value="Z_8f5IWuTFg">LoFi Girl — 5</option>
+              <option value="A8yjETPcZeA">LoFi Girl — 6</option>
+              <option value="UJs6__K7gSY">LoFi Girl — 7</option>
+              <option value="8b3fqIBrNW0">LoFi Girl — 8</option>
+              <option value="custom">Custom…</option>
+            </select>
+
+            <input id="lofiUrlInput" class="input" style="flex:1; min-width:280px;" placeholder="https://www.youtube.com/watch?v=..." />
+            <button id="lofiLoadBtn" class="btn btn--primary">Load</button>
+
+            <label class="row" style="gap:8px; align-items:center; margin-left:auto;">
+              <input id="lofiBgToggle" type="checkbox" />
+              <span class="muted">Use video as website background</span>
+            </label>
+          </div>
+
+          <div style="height:420px; border-radius:16px; overflow:hidden; border:1px solid rgba(255,255,255,0.08); background:#111;">
+            <iframe id="lofiFrame" title="LoFi stream" src="" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen style="width:100%; height:100%; border:0;"></iframe>
+          </div>
+        </div>
+<div class="modal__footer">
+          <button class="btn btn--ghost" id="musicModalFooterClose" type="button" data-close-modal="music">Close</button>
+        </div>
+      </div>
+    </div>
+  </main>
+
+
+  <!-- Ambient sounds dock (available on every screen) -->
+  <div id="ambientDock" class="ambientDock" aria-label="Ambient sounds">
+    <button id="ambientToggle" class="ambientDock__toggle" type="button" aria-expanded="false" aria-controls="ambientPanel" title="Ambient sounds">
+      🔊
+    </button>
+
+    <aside id="ambientPanel" class="ambientPanel hidden" role="region" aria-label="Ambient sound controls">
+      <div class="ambientPanel__head">
+        <div class="ambientPanel__title">Ambient sounds</div>
+        <button id="ambientClose" class="iconBtn" type="button" aria-label="Close ambient panel">✕</button>
+      </div>
+
+      <div class="ambientPanel__body">
+        <div class="ambientList" role="radiogroup" aria-label="Ambient type">
+          <label class="ambientOpt"><input type="radio" name="sessAmbTypeDock" value="off"> <span>Off</span></label>
+          <label class="ambientOpt"><input type="radio" name="sessAmbTypeDock" value="fire"> <span>Fire</span></label>
+          <label class="ambientOpt"><input type="radio" name="sessAmbTypeDock" value="ocean"> <span>Ocean</span></label>
+          <label class="ambientOpt"><input type="radio" name="sessAmbTypeDock" value="nature"> <span>Nature</span></label>
+          <label class="ambientOpt"><input type="radio" name="sessAmbTypeDock" value="wind"> <span>Wind</span></label>
+          <label class="ambientOpt"><input type="radio" name="sessAmbTypeDock" value="ambient"> <span>Ambient</span></label>
+        </div>
+
+        <div class="ambientVol">
+          <div class="muted small">Volume</div>
+          <input id="sessAmbVolDock" class="input range" type="range" min="0" max="1" step="0.01" value="0.4" />
+        </div>
+      </div>
+    </aside>
+  </div>
+
+
+
+  <!-- ACCOUNT MODAL -->
+  <div class="modal hidden" id="accountModal" role="dialog" aria-modal="true" aria-labelledby="accountTitle">
+    <div class="modal__backdrop" data-close-modal="account"></div>
+    <div class="modal__panel">
+      <div class="modal__header">
+        <div class="modal__title" id="accountTitle">Account</div>
+        <button class="iconBtn" data-close-modal="account" aria-label="Close">✕</button>
+      </div>
+
+      <div class="card">
+        <div class="card__titleRow">
+          <div class="card__title">Sign in</div>
+          <div class="pill pill--muted" id="accountSyncPill">Offline</div>
+        </div>
+        <div class="muted small" id="accountSyncText" style="margin-top:6px;">Sign in to sync your progress across devices.</div>
+
+        <div id="accountSignedOut" style="margin-top:12px;">
+          <div class="grid grid--2" style="gap:10px;">
+            <div>
+              <div class="muted small">Email</div>
+              <input id="accountEmail" class="input" type="email" autocomplete="email" placeholder="you@example.com" />
+            </div>
+            <div>
+              <div class="muted small">Password</div>
+              <input id="accountPassword" class="input" type="password" autocomplete="current-password" placeholder="••••••••" />
+            </div>
+          </div>
+
+          <div style="display:flex; gap:10px; margin-top:12px; flex-wrap:wrap;">
+            <button class="btn btn--primary" id="accountSignInBtn" type="button">Sign in</button>
+            <button class="btn btn--ghost" id="accountSignUpBtn" type="button">Create account</button>
+</div>
+
+          <div class="muted small" style="margin-top:10px;">
+            You can use the same account on web and mobile.
+          </div>
+        </div>
+
+        <div id="accountSignedIn" class="hidden" style="margin-top:12px;">
+          <div class="muted small">Signed in as <span class="mono" id="accountEmailLabel">—</span></div>
+          <div style="display:flex; gap:10px; margin-top:12px; flex-wrap:wrap;">
+            <button class="btn btn--ghost" id="accountSyncNowBtn" type="button">Sync now</button>
+            <button class="btn btn--danger" id="accountSignOutBtn" type="button">Sign out</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="muted small" style="margin-top:10px;">
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase-config.js"></script>
+  <script src="app.js"></script>
+  <script src="https://www.youtube.com/iframe_api"></script>
+
+  
+
+  <!-- Toast notifications -->
+  <div id="toasts" class="toasts" aria-live="polite" aria-atomic="true"></div>
+
+</body>
+</html>
