@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 220" role="img" aria-label="Bloomora island level 1">
+  <defs><linearGradient id="s" x1="0" x2="1" y1="0" y2="1"><stop stop-color="#7dd3fc"/><stop offset="1" stop-color="#14b8a6"/></linearGradient></defs>
+  <rect width="320" height="220" rx="24" fill="#dff7f4"/>
+  <ellipse cx="160" cy="160" rx="118" ry="32" fill="#a7f3d0"/>
+  <path d="M73 142c38-50 136-58 185 0-15 32-58 52-95 53-40 1-79-16-90-53Z" fill="url(#s)"/>
+  <path d="M92 145c42 20 95 22 137 0-21 24-46 36-70 36-25 0-48-12-67-36Z" fill="#0f766e"/>
+  <circle cx="96" cy="80" r="17" fill="#fbbf24"/>
+</svg>

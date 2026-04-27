@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 180" role="img" aria-label="Bloomora plant">
+  <rect width="180" height="180" rx="24" fill="#ecfeff"/>
+  <ellipse cx="90" cy="140" rx="58" ry="15" fill="#bae6fd"/>
+  <path d="M90 135V52" stroke="#047857" stroke-width="10" stroke-linecap="round"/>
+  <path d="M85 96c-34 6-55-14-56-36 33-4 56 12 56 36Z" fill="#22c55e"/>
+  <path d="M96 83c34-16 59-2 64 20-31 17-57 8-64-20Z" fill="#0ea5e9"/>
+  <path d="M88 65c-23-22-18-47 1-58 25 22 21 46-1 58Z" fill="#10b981"/>
+</svg>

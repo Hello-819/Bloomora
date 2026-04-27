@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#090d13"/>
+      <stop offset="0.6" stop-color="#121a25"/>
+      <stop offset="1" stop-color="#070a0f"/>
+    </linearGradient>
+    <filter id="soft" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="26"/>
+    </filter>
+  </defs>
+  <rect width="1920" height="1080" fill="url(#bg)"/>
+  <g filter="url(#soft)" opacity="0.22">
+    <path d="M260,840 C420,660 520,620 680,720 C840,820 920,960 760,1020 C560,1100 360,1040 260,840 Z" fill="#79ffe0"/>
+    <path d="M1500,820 C1620,640 1760,620 1860,740 C1960,860 1880,1040 1680,1040 C1540,1040 1420,940 1500,820 Z" fill="#a58bff"/>
+    <path d="M980,260 C1100,120 1280,140 1360,260 C1440,380 1340,520 1160,500 C1020,485 900,380 980,260 Z" fill="#ffd0a8"/>
+  </g>
+  <g opacity="0.12">
+    <rect x="240" y="160" width="420" height="220" rx="60" fill="#79ffe0"/>
+    <rect x="1240" y="620" width="460" height="260" rx="70" fill="#a58bff"/>
+  </g>
+</svg>

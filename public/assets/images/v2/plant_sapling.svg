@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 180" role="img" aria-label="Bloomora sapling">
+  <rect width="180" height="180" rx="24" fill="#f0fdf4"/>
+  <ellipse cx="90" cy="145" rx="62" ry="15" fill="#bbf7d0"/>
+  <path d="M91 140V44" stroke="#7c2d12" stroke-width="13" stroke-linecap="round"/>
+  <path d="M88 80c-39 9-62-14-63-39 38-5 64 13 63 39Z" fill="#16a34a"/>
+  <path d="M96 71c40-20 70-3 75 23-36 20-67 8-75-23Z" fill="#0f766e"/>
+  <path d="M89 53c-26-25-19-54 3-67 28 25 24 53-3 67Z" fill="#22c55e"/>
+  <circle cx="121" cy="100" r="8" fill="#f43f5e"/>
+</svg>

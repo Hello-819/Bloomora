@@ -1,0 +1,10 @@
+node_modules/
+dist/
+playwright-report/
+test-results/
+*.pid
+vite-dev*.log
+tsconfig.tsbuildinfo
+.env
+.env.local
+.DS_Store

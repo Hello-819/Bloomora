@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 180" role="img" aria-label="Bloomora sprout">
+  <rect width="180" height="180" rx="24" fill="#f0fdfa"/>
+  <ellipse cx="90" cy="136" rx="55" ry="14" fill="#99f6e4"/>
+  <path d="M91 132c0-32-1-43 0-62" stroke="#0f766e" stroke-width="9" stroke-linecap="round"/>
+  <path d="M88 88c-32 4-48-18-44-36 28-3 47 10 44 36Z" fill="#22c55e"/>
+  <path d="M94 78c31-12 52 1 55 20-27 13-50 4-55-20Z" fill="#14b8a6"/>
+</svg>

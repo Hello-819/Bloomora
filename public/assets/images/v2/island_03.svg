@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 220" role="img" aria-label="Bloomora island level 3">
+  <rect width="320" height="220" rx="24" fill="#eef2ff"/>
+  <ellipse cx="160" cy="164" rx="124" ry="32" fill="#c7d2fe"/>
+  <path d="M58 142c43-58 152-66 204 2-15 31-58 51-102 52-46 1-91-18-102-54Z" fill="#22c55e"/>
+  <path d="M91 143c43 20 109 23 148 0-20 27-49 41-78 41-30 0-55-13-70-41Z" fill="#166534"/>
+  <rect x="132" y="91" width="48" height="41" rx="6" fill="#fef3c7"/>
+  <path d="m126 96 31-26 31 26H126Z" fill="#be123c"/>
+  <rect x="150" y="109" width="11" height="23" rx="2" fill="#0f766e"/>
+  <path d="M208 136c0-23 14-38 31-38 13 0 23 8 23 20 0 17-22 20-54 18Z" fill="#84cc16"/>
+</svg>
