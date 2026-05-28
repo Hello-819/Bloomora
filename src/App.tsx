@@ -497,6 +497,12 @@ function TimerPage({ state, actions }: { state: AppState; actions: AppActions })
   const remaining = timer ? remainingForTimer(timer, now) : null;
 
   useEffect(() => {
+    if (state.activeTimer) {
+      setLabelId(state.activeTimer.labeling.labelId || '');
+    }
+  }, [state.activeTimer?.labeling.labelId]);
+
+  useEffect(() => {
     if (!timer?.running || !timer.totalSec || remaining === null || remaining > 0) return;
     if (timer.mode === 'pomodoro') actions.completePomodoroPhase();
     else actions.pauseTimer();
@@ -509,6 +515,10 @@ function TimerPage({ state, actions }: { state: AppState; actions: AppActions })
 
   const start = () => {
     if (state.activeTimer) return;
+    if (state.profile.timerRequireLabel && !labelId) {
+      actions.notify('Label required', 'Please select a label before starting the timer.', 'warning');
+      return;
+    }
     if (mode === 'stopwatch') {
       actions.startTimer({ mode, labeling });
       return;
@@ -624,7 +634,16 @@ function TimerPage({ state, actions }: { state: AppState; actions: AppActions })
           )}
           <label className="fieldLabel">
             Label
-            <select className="input" value={labelId} onChange={(event) => setLabelId(event.target.value)} disabled={Boolean(state.activeTimer)}>
+            <select
+              className="input"
+              value={labelId}
+              onChange={(event) => {
+                setLabelId(event.target.value);
+                if (state.activeTimer) {
+                  actions.updateActiveTimerLabel(event.target.value || undefined);
+                }
+              }}
+            >
               <option value="">No label</option>
               {labels.map((label) => (
                 <option value={label.id} key={label.id}>
@@ -1964,6 +1983,17 @@ function SettingsPage({
           <select className="input" value={state.profile.colorMode} onChange={(event) => actions.setColorMode(event.target.value as ColorMode)}>
             <option value="light">Light</option>
             <option value="dark">Dark</option>
+          </select>
+        </label>
+        <label className="fieldLabel">
+          Require label for timer
+          <select
+            className="input"
+            value={state.profile.timerRequireLabel ? 'yes' : 'no'}
+            onChange={(event) => actions.updateProfile({ timerRequireLabel: event.target.value === 'yes' })}
+          >
+            <option value="yes">Yes</option>
+            <option value="no">No</option>
           </select>
         </label>
         <label className="fieldLabel">

@@ -96,6 +96,7 @@ export interface AppActions {
   restoreArchived(kind: ArchiveKind, id: string): void;
   permanentlyDeleteArchived(kind: ArchiveKind, id: string): Promise<void>;
   startTimer(options: StartTimerOptions): void;
+  updateActiveTimerLabel(labelId?: string): void;
   pauseTimer(): void;
   resumeTimer(): void;
   resetTimer(): void;
@@ -790,6 +791,24 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
           updatedAt: now,
         };
         commit({ ...current, activeTimer: timer }, { silent: true });
+      },
+
+      updateActiveTimerLabel(labelId) {
+        const current = requireState();
+        if (!current.activeTimer) return;
+        commit(
+          {
+            ...current,
+            activeTimer: {
+              ...current.activeTimer,
+              labeling: {
+                ...current.activeTimer.labeling,
+                labelId,
+              },
+            },
+          },
+          { silent: true },
+        );
       },
 
       pauseTimer() {

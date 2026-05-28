@@ -86,6 +86,7 @@ export interface ProfileSettings {
   backgroundImage?: string;
   stopwatchCapOn: boolean;
   stopwatchCapHours: number;
+  timerRequireLabel: boolean;
   sessionAmbient: {
     type: AmbientType;
     volume: number;
