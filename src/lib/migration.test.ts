@@ -1,5 +1,40 @@
-import { describe, expect, it } from 'vitest';
-import { migrateV1State } from './migration';
+import { describe, expect, it, beforeEach, afterEach } from 'vitest';
+import { migrateV1State, readV1StateFromLocalStorage, V1_STORAGE_KEY } from './migration';
+
+describe('readV1StateFromLocalStorage', () => {
+  beforeEach(() => {
+    window.localStorage.clear();
+  });
+
+  afterEach(() => {
+    window.localStorage.clear();
+  });
+
+  it('returns null if no v1 state in local storage', () => {
+    expect(readV1StateFromLocalStorage()).toBeNull();
+  });
+
+  it('returns null if local storage contains invalid JSON', () => {
+    window.localStorage.setItem(V1_STORAGE_KEY, 'invalid json');
+    expect(readV1StateFromLocalStorage()).toBeNull();
+  });
+
+  it('correctly parses and migrates a valid v1 state stringified in local storage', () => {
+    const v1State = {
+      profile: {
+        name: 'Ayyan',
+        weeklyGoalHours: 12,
+        theme: 'emerald',
+      },
+    };
+    window.localStorage.setItem(V1_STORAGE_KEY, JSON.stringify(v1State));
+
+    const migrated = readV1StateFromLocalStorage();
+    expect(migrated).not.toBeNull();
+    expect(migrated?.profile.displayName).toBe('Ayyan');
+    expect(migrated?.profile.theme).toBe('grove');
+  });
+});
 
 describe('v1 migration', () => {
   it('preserves sessions, labels, tasks, worlds, fruit, audio, and pomodoro settings', () => {
