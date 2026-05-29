@@ -7,6 +7,10 @@ describe('export and import validation', () => {
     expect(validateImportText('{bad json')).toEqual({ error: 'That file is not valid JSON.' });
   });
 
+  it('rejects valid JSON with an invalid schema', () => {
+    expect(validateImportText('{"foo": "bar"}')).toEqual({ error: 'The file format was recognized but data could not be validated.' });
+  });
+
   it('accepts a v2 export payload and creates a preview', () => {
     const state = createDefaultState();
     const result = validateImportText(createExportPayload(state));

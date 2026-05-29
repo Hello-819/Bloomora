@@ -48,7 +48,7 @@ export function validateImportText(text: string): ImportPreview | { error: strin
       ? (parsed as { state: unknown }).state
       : parsed;
   const state = normalizeImportedState(source);
-  if (!state) return { error: 'That file does not look like a Bloomora backup.' };
+  if (!state) return { error: 'The file format was recognized but data could not be validated.' };
 
   return {
     state,
