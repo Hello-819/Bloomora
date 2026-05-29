@@ -2,7 +2,7 @@ import { defineConfig } from 'vitest/config';
 import react from '@vitejs/plugin-react';
 import { loadEnv, type Plugin } from 'vite';
 
-function openRouterDevApi(apiKey: string | undefined, model: string | undefined): Plugin {
+function openRouterDevApi(apiKey: string | undefined, model: string | undefined, authToken: string | undefined): Plugin {
   return {
     name: 'bloomora-openrouter-dev-api',
     configureServer(server) {
@@ -18,6 +18,21 @@ function openRouterDevApi(apiKey: string | undefined, model: string | undefined)
           res.statusCode = 500;
           res.setHeader('content-type', 'application/json');
           res.end(JSON.stringify({ error: 'OPENROUTER_API_KEY is not configured on the dev server.' }));
+          return;
+        }
+
+        if (!authToken) {
+          res.statusCode = 500;
+          res.setHeader('content-type', 'application/json');
+          res.end(JSON.stringify({ error: 'VITE_API_AUTH_TOKEN is not configured on the dev server.' }));
+          return;
+        }
+
+        const authHeader = req.headers.authorization;
+        if (!authHeader || authHeader !== `Bearer ${authToken}`) {
+          res.statusCode = 401;
+          res.setHeader('content-type', 'application/json');
+          res.end(JSON.stringify({ error: 'Unauthorized.' }));
           return;
         }
 
@@ -90,7 +105,7 @@ function openRouterDevApi(apiKey: string | undefined, model: string | undefined)
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
   return {
-  plugins: [react(), openRouterDevApi(env.OPENROUTER_API_KEY, env.OPENROUTER_MODEL)],
+  plugins: [react(), openRouterDevApi(env.OPENROUTER_API_KEY, env.OPENROUTER_MODEL, env.VITE_API_AUTH_TOKEN)],
   build: {
     rollupOptions: {
       output: {
