@@ -294,12 +294,6 @@ function TopAiDropdown({
   setPage: (page: Page) => void;
   onClose: () => void;
 }) {
-  const sessions = visibleSessions(state);
-  const tasks = visibleTasks(state);
-  const notes = visibleNotes(state);
-  const flashcards = visibleFlashcards(state);
-  const totals = studyTotals(sessions);
-  const streak = computeStreak(sessions);
   const subject = activeSubject(state);
   const [messages, setMessages] = useState<ChatMessage[]>([
     { role: 'assistant', content: 'Ask for a quick explanation, quiz, plan, note, or flashcard idea.' },
@@ -314,6 +308,12 @@ function TopAiDropdown({
     setMessages(nextMessages);
     setInput('');
     setSending(true);
+    const sessions = visibleSessions(state);
+    const tasks = visibleTasks(state);
+    const notes = visibleNotes(state);
+    const flashcards = visibleFlashcards(state);
+    const totals = studyTotals(sessions);
+    const streak = computeStreak(sessions);
     try {
       const response = await fetch('/api/ai-chat', {
         method: 'POST',
@@ -1783,7 +1783,6 @@ function AssistantPage({
   const sessions = visibleSessions(state);
   const tasks = visibleTasks(state);
   const notes = visibleNotes(state);
-  const flashcards = visibleFlashcards(state);
   const totals = studyTotals(sessions);
   const streak = computeStreak(sessions);
   const quests = dailyQuests(state);
@@ -1812,6 +1811,7 @@ function AssistantPage({
     setMessages(nextMessages);
     setInput('');
     setSending(true);
+    const flashcards = visibleFlashcards(state);
     try {
       const response = await fetch('/api/ai-chat', {
         method: 'POST',
