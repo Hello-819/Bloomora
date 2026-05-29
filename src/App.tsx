@@ -15,8 +15,10 @@ import { compactHours, formatClock, formatDateTime, formatDuration } from './lib
 import { elapsedForTimer, remainingForTimer } from './lib/timers';
 import { createExportPayload, downloadJson, validateImportText, type ImportPreview } from './lib/exportImport';
 
+import { readAiResponse } from './lib/ai';
+import { useAiChat } from './hooks/useAiChat';
+
 type Page = 'dashboard' | 'timer' | 'worlds' | 'stats' | 'plan' | 'notes' | 'flashcards' | 'assistant' | 'archive' | 'settings';
-type AiApiResponse = { reply?: string; error?: string; model?: string; usage?: unknown };
 
 const NAV_ITEMS: Array<{ id: Page; label: string }> = [
   { id: 'dashboard', label: 'Home' },
@@ -79,25 +81,6 @@ function visibleFlashcards(state: AppState): Flashcard[] {
 function activeSubject(state: AppState): StudySubject | undefined {
   const subjects = visibleSubjects(state);
   return subjects.find((subject) => subject.id === state.profile.aiTutor.activeSubjectId) || subjects[0];
-}
-
-async function readAiResponse(response: Response): Promise<AiApiResponse> {
-  const text = await response.text();
-  if (!text.trim()) {
-    return {
-      error: response.ok
-        ? 'The AI route returned an empty response.'
-        : `The AI route returned ${response.status} ${response.statusText || 'without a response body'}.`,
-    };
-  }
-
-  try {
-    return JSON.parse(text) as AiApiResponse;
-  } catch {
-    return {
-      error: text.slice(0, 300) || 'The AI route returned a non-JSON response.',
-    };
-  }
 }
 
 function labelName(state: AppState, session: StudySession): string {
@@ -301,53 +284,29 @@ function TopAiDropdown({
   const totals = studyTotals(sessions);
   const streak = computeStreak(sessions);
   const subject = activeSubject(state);
-  const [messages, setMessages] = useState<ChatMessage[]>([
-    { role: 'assistant', content: 'Ask for a quick explanation, quiz, plan, note, or flashcard idea.' },
-  ]);
-  const [input, setInput] = useState('');
-  const [sending, setSending] = useState(false);
 
-  const sendMessage = async (text = input) => {
-    const clean = text.trim();
-    if (!clean || sending) return;
-    const nextMessages = [...messages, { role: 'user' as const, content: clean }];
-    setMessages(nextMessages);
-    setInput('');
-    setSending(true);
-    try {
-      const response = await fetch('/api/ai-chat', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
-          messages: nextMessages,
-          profile: {
-            displayName: state.profile.displayName,
-            qualification: subject?.qualification || '',
-            examBoard: subject?.examBoard || '',
-            subject: subject?.name || '',
-            targetGrade: subject?.targetGrade || '',
-            examDate: subject?.examDate || '',
-          },
-          context: {
-            todayStudy: formatDuration(totals.todaySec),
-            weekStudy: formatDuration(totals.weekSec),
-            streakDays: streak.current,
-            openTasks: tasks.filter((task) => !task.done).slice(0, 6).map((task) => ({ text: task.text, notes: task.notes })),
-            recentNotes: notes.slice(0, 4).map((note) => ({ title: note.title, body: note.body.slice(0, 700) })),
-            flashcards: flashcards.slice(0, 12).map((card) => ({ front: card.front, back: card.back })),
-          },
-        }),
-      });
-      const data = await readAiResponse(response);
-      if (!response.ok) throw new Error(data?.error || 'AI request failed.');
-      setMessages([...nextMessages, { role: 'assistant', content: data.reply || 'I could not generate a response.' }]);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'The AI assistant could not respond.';
-      setMessages([...nextMessages, { role: 'assistant', content: `I could not reach the AI model: ${message}` }]);
-    } finally {
-      setSending(false);
-    }
-  };
+  const { messages, input, setInput, sending, sendMessage } = useAiChat(
+    [{ role: 'assistant', content: 'Ask for a quick explanation, quiz, plan, note, or flashcard idea.' }],
+    (nextMessages) => ({
+      messages: nextMessages,
+      profile: {
+        displayName: state.profile.displayName,
+        qualification: subject?.qualification || '',
+        examBoard: subject?.examBoard || '',
+        subject: subject?.name || '',
+        targetGrade: subject?.targetGrade || '',
+        examDate: subject?.examDate || '',
+      },
+      context: {
+        todayStudy: formatDuration(totals.todaySec),
+        weekStudy: formatDuration(totals.weekSec),
+        streakDays: streak.current,
+        openTasks: tasks.filter((task) => !task.done).slice(0, 6).map((task) => ({ text: task.text, notes: task.notes })),
+        recentNotes: notes.slice(0, 4).map((note) => ({ title: note.title, body: note.body.slice(0, 700) })),
+        flashcards: flashcards.slice(0, 12).map((card) => ({ front: card.front, back: card.back })),
+      },
+    })
+  );
 
   const go = (next: Page) => {
     setPage(next);
@@ -1227,8 +1186,6 @@ function NoteCard({ note, state, actions, onOpen }: { note: StudyNote; state: Ap
   );
 }
 
-type ChatMessage = { role: 'user' | 'assistant'; content: string };
-
 function FlashcardsPage({ state, actions }: { state: AppState; actions: AppActions }) {
   const labels = visibleLabels(state);
   const subjects = visibleSubjects(state);
@@ -1661,14 +1618,7 @@ function AssistantPage({
   const nextQuest = quests.find((quest) => !quest.completed);
   const openTasks = tasks.filter((task) => !task.done);
   const tutor = activeSubject(state);
-  const [messages, setMessages] = useState<ChatMessage[]>([
-    {
-      role: 'assistant',
-      content: 'Tell me what you are studying, or ask for a revision plan, explanation, quiz, essay structure, or exam technique help.',
-    },
-  ]);
-  const [input, setInput] = useState('');
-  const [sending, setSending] = useState(false);
+
   const suggestions = [
     totals.todaySec < 25 * 60 ? 'Start with a 25 minute focus block to complete today’s Focus bloom quest.' : 'You already hit a good focus base today. A short review block would lock it in.',
     openTasks.length ? `Pick "${openTasks[0].text}" as the next task and attach it to a timer.` : 'Add one small task before your next session so the timer has a clear target.',
@@ -1676,51 +1626,37 @@ function AssistantPage({
     streak.current > 0 ? `Protect your ${streak.current} day streak with a tiny session if energy is low.` : 'Begin a new streak today with one focused minute.',
   ];
 
-  const sendMessage = async (text = input) => {
-    const clean = text.trim();
-    if (!clean || sending) return;
-    const nextMessages = [...messages, { role: 'user' as const, content: clean }];
-    setMessages(nextMessages);
-    setInput('');
-    setSending(true);
-    try {
-      const response = await fetch('/api/ai-chat', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
-          messages: nextMessages,
-          profile: {
-            displayName: state.profile.displayName,
-            qualification: tutor?.qualification || '',
-            examBoard: tutor?.examBoard || '',
-            subject: tutor?.name || '',
-            targetGrade: tutor?.targetGrade || '',
-            examDate: tutor?.examDate || '',
-          },
-          context: {
-            todayStudy: formatDuration(totals.todaySec),
-            weekStudy: formatDuration(totals.weekSec),
-            streakDays: streak.current,
-            openTasks: openTasks.slice(0, 8).map((task) => ({ text: task.text, notes: task.notes })),
-            recentNotes: notes.slice(0, 6).map((note) => ({ title: note.title, body: note.body.slice(0, 900) })),
-            flashcards: flashcards
-              .filter((card) => !tutor || card.subjectId === tutor.id || !card.subjectId)
-              .slice(0, 16)
-              .map((card) => ({ front: card.front, back: card.back })),
-            dailyQuests: quests.map((quest) => ({ title: quest.title, completed: quest.completed })),
-          },
-        }),
-      });
-      const data = await readAiResponse(response);
-      if (!response.ok) throw new Error(data?.error || 'AI request failed.');
-      setMessages([...nextMessages, { role: 'assistant', content: data.reply || 'I could not generate a response.' }]);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'The AI assistant could not respond.';
-      setMessages([...nextMessages, { role: 'assistant', content: `I could not reach the AI model: ${message}` }]);
-    } finally {
-      setSending(false);
-    }
-  };
+  const { messages, input, setInput, sending, sendMessage } = useAiChat(
+    [
+      {
+        role: 'assistant',
+        content: 'Tell me what you are studying, or ask for a revision plan, explanation, quiz, essay structure, or exam technique help.',
+      },
+    ],
+    (nextMessages) => ({
+      messages: nextMessages,
+      profile: {
+        displayName: state.profile.displayName,
+        qualification: tutor?.qualification || '',
+        examBoard: tutor?.examBoard || '',
+        subject: tutor?.name || '',
+        targetGrade: tutor?.targetGrade || '',
+        examDate: tutor?.examDate || '',
+      },
+      context: {
+        todayStudy: formatDuration(totals.todaySec),
+        weekStudy: formatDuration(totals.weekSec),
+        streakDays: streak.current,
+        openTasks: openTasks.slice(0, 8).map((task) => ({ text: task.text, notes: task.notes })),
+        recentNotes: notes.slice(0, 6).map((note) => ({ title: note.title, body: note.body.slice(0, 900) })),
+        flashcards: flashcards
+          .filter((card) => !tutor || card.subjectId === tutor.id || !card.subjectId)
+          .slice(0, 16)
+          .map((card) => ({ front: card.front, back: card.back })),
+        dailyQuests: quests.map((quest) => ({ title: quest.title, completed: quest.completed })),
+      },
+    })
+  );
 
   return (
     <section className="assistantLayout">
