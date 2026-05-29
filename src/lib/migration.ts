@@ -277,6 +277,7 @@ export function migrateV1State(raw: unknown): AppState {
       colorMode: asString(profile.theme) === 'midnight' ? 'dark' : defaults.profile.colorMode,
       stopwatchCapOn: profile.stopwatchCapOn !== false,
       stopwatchCapHours: Math.min(24, Math.max(1, asNumber(profile.stopwatchCapHours, 6))),
+      timerRequireLabel: profile.timerRequireLabel !== false,
       sessionAmbient: {
         type: normalizeAmbient(asObject(profile.sessionAmbient).type),
         volume: Math.min(1, Math.max(0, asNumber(asObject(profile.sessionAmbient).volume, 0.4))),

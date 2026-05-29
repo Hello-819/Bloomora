@@ -16,6 +16,7 @@ export function createDefaultState(): AppState {
       backgroundImage: undefined,
       stopwatchCapOn: true,
       stopwatchCapHours: 6,
+      timerRequireLabel: true,
       sessionAmbient: {
         type: 'off',
         volume: 0.4,
