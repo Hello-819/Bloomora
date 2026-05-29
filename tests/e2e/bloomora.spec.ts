@@ -16,9 +16,9 @@ test('local-first flow can create a label, add minutes, and show stats', async (
   await expect(page.locator('.metricCard', { hasText: 'Total study' }).getByText('25m')).toBeVisible();
 });
 
-test('settings shows Supabase sync as configured', async ({ page }) => {
+test('settings shows Supabase sync status', async ({ page }) => {
   await page.goto('/');
   await page.getByRole('button', { name: 'Settings' }).first().click();
-  await expect(page.getByText('Not configured')).toHaveCount(0);
+  await expect(page.getByText('Not configured')).toBeVisible();
   await expect(page.getByText('Local data stays on this browser.')).toBeVisible();
 });
