@@ -317,7 +317,10 @@ function TopAiDropdown({
     try {
       const response = await fetch('/api/ai-chat', {
         method: 'POST',
-        headers: { 'content-type': 'application/json' },
+        headers: {
+          'content-type': 'application/json',
+          authorization: `Bearer ${import.meta.env.VITE_API_AUTH_TOKEN}`,
+        },
         body: JSON.stringify({
           messages: nextMessages,
           profile: {
@@ -1304,7 +1307,10 @@ function FlashcardsPage({ state, actions }: { state: AppState; actions: AppActio
     try {
       const response = await fetch('/api/ai-chat', {
         method: 'POST',
-        headers: { 'content-type': 'application/json' },
+        headers: {
+          'content-type': 'application/json',
+          authorization: `Bearer ${import.meta.env.VITE_API_AUTH_TOKEN}`,
+        },
         body: JSON.stringify({
           messages: [
             {
@@ -1354,7 +1360,10 @@ function FlashcardsPage({ state, actions }: { state: AppState; actions: AppActio
     try {
       const response = await fetch('/api/ai-chat', {
         method: 'POST',
-        headers: { 'content-type': 'application/json' },
+        headers: {
+          'content-type': 'application/json',
+          authorization: `Bearer ${import.meta.env.VITE_API_AUTH_TOKEN}`,
+        },
         body: JSON.stringify({
           messages: [
             {
@@ -1686,7 +1695,10 @@ function AssistantPage({
     try {
       const response = await fetch('/api/ai-chat', {
         method: 'POST',
-        headers: { 'content-type': 'application/json' },
+        headers: {
+          'content-type': 'application/json',
+          authorization: `Bearer ${import.meta.env.VITE_API_AUTH_TOKEN}`,
+        },
         body: JSON.stringify({
           messages: nextMessages,
           profile: {

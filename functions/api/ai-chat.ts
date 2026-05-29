@@ -15,6 +15,7 @@ type PagesContext = {
     OPENROUTER_API_KEY?: string;
     OPENROUTER_MODEL?: string;
     CF_PAGES_URL?: string;
+    API_AUTH_TOKEN?: string;
   };
 };
 
@@ -39,6 +40,16 @@ export async function onRequestPost({ request, env }: PagesContext): Promise<Res
   const apiKey = env.OPENROUTER_API_KEY;
   if (!apiKey) {
     return jsonResponse({ error: 'OPENROUTER_API_KEY is not configured in Cloudflare Pages.' }, 500);
+  }
+
+  const authToken = env.API_AUTH_TOKEN;
+  if (!authToken) {
+    return jsonResponse({ error: 'API_AUTH_TOKEN is not configured in Cloudflare Pages.' }, 500);
+  }
+
+  const authHeader = request.headers.get('authorization');
+  if (!authHeader || authHeader !== `Bearer ${authToken}`) {
+    return jsonResponse({ error: 'Unauthorized.' }, 401);
   }
 
   try {
