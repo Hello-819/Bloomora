@@ -208,7 +208,8 @@ function AsideNav({
   musicOpen: boolean;
   setMusicOpen: (open: boolean) => void;
 }) {
-  const totals = studyTotals(visibleSessions(state));
+  const sessions = useMemo(() => visibleSessions(state), [state.sessions]);
+  const totals = useMemo(() => studyTotals(sessions), [sessions]);
   const dailyGoalSec = Math.max(60, state.profile.dailyGoalMinutes * 60);
   return (
     <aside className="sideNav">
@@ -294,13 +295,13 @@ function TopAiDropdown({
   setPage: (page: Page) => void;
   onClose: () => void;
 }) {
-  const sessions = visibleSessions(state);
-  const tasks = visibleTasks(state);
-  const notes = visibleNotes(state);
-  const flashcards = visibleFlashcards(state);
-  const totals = studyTotals(sessions);
-  const streak = computeStreak(sessions);
-  const subject = activeSubject(state);
+  const sessions = useMemo(() => visibleSessions(state), [state.sessions]);
+  const tasks = useMemo(() => visibleTasks(state), [state.tasks]);
+  const notes = useMemo(() => visibleNotes(state), [state.notes]);
+  const flashcards = useMemo(() => visibleFlashcards(state), [state.flashcards]);
+  const totals = useMemo(() => studyTotals(sessions), [sessions]);
+  const streak = useMemo(() => computeStreak(sessions), [sessions]);
+  const subject = useMemo(() => activeSubject(state), [state.subjects, state.profile.aiTutor.activeSubjectId]);
   const [messages, setMessages] = useState<ChatMessage[]>([
     { role: 'assistant', content: 'Ask for a quick explanation, quiz, plan, note, or flashcard idea.' },
   ]);
@@ -421,12 +422,12 @@ function DashboardPage({
   actions: AppActions;
   setPage: (page: Page) => void;
 }) {
-  const sessions = visibleSessions(state);
-  const totals = studyTotals(sessions);
-  const streak = computeStreak(sessions);
+  const sessions = useMemo(() => visibleSessions(state), [state.sessions]);
+  const totals = useMemo(() => studyTotals(sessions), [sessions]);
+  const streak = useMemo(() => computeStreak(sessions), [sessions]);
   const level = computeIslandLevel(state.gamification.islandXpSec);
   const tree = computeTreeStage(state.gamification.gardenGrowthSec);
-  const quests = dailyQuests(state);
+  const quests = useMemo(() => dailyQuests(state), [state.gamification, state.sessions, state.tasks]);
   const recent = sessions.slice(0, 5);
   const weeklyGoal = Math.max(1, state.profile.weeklyGoalHours * 3600);
   const quote = useMemo(() => MOTIVATION_QUOTES[Math.floor(Math.random() * MOTIVATION_QUOTES.length)], []);
@@ -484,8 +485,8 @@ function DashboardPage({
 }
 
 function TimerPage({ state, actions }: { state: AppState; actions: AppActions }) {
-  const labels = visibleLabels(state);
-  const tasks = visibleTasks(state).filter((task) => !task.done);
+  const labels = useMemo(() => visibleLabels(state), [state.labels]);
+  const tasks = useMemo(() => visibleTasks(state).filter((task) => !task.done), [state.tasks]);
   const [mode, setMode] = useState<TimerMode>('stopwatch');
   const [labelId, setLabelId] = useState('');
   const [selectedTasks, setSelectedTasks] = useState<string[]>([]);
@@ -731,9 +732,9 @@ function WorldsPage({ state, actions }: { state: AppState; actions: AppActions }
 }
 
 function StatsPage({ state, actions }: { state: AppState; actions: AppActions }) {
-  const sessions = visibleSessions(state);
-  const totals = studyTotals(sessions);
-  const streak = computeStreak(sessions);
+  const sessions = useMemo(() => visibleSessions(state), [state.sessions]);
+  const totals = useMemo(() => studyTotals(sessions), [sessions]);
+  const streak = useMemo(() => computeStreak(sessions), [sessions]);
   const level = computeIslandLevel(state.gamification.islandXpSec);
   const achievements = nextAchievements(state);
   const byLabel = useMemo(() => {
@@ -811,8 +812,8 @@ function StatsPage({ state, actions }: { state: AppState; actions: AppActions })
 }
 
 function PlanPage({ state, actions }: { state: AppState; actions: AppActions }) {
-  const labels = visibleLabels(state);
-  const tasks = visibleTasks(state);
+  const labels = useMemo(() => visibleLabels(state), [state.labels]);
+  const tasks = useMemo(() => visibleTasks(state), [state.tasks]);
   const [labelNameInput, setLabelNameInput] = useState('');
   const [color, setColor] = useState(LABEL_COLORS[0]);
   const [taskText, setTaskText] = useState('');
@@ -984,8 +985,8 @@ function MarkdownView({ body }: { body: string }) {
 }
 
 function NotesPage({ state, actions }: { state: AppState; actions: AppActions }) {
-  const labels = visibleLabels(state);
-  const notes = visibleNotes(state);
+  const labels = useMemo(() => visibleLabels(state), [state.labels]);
+  const notes = useMemo(() => visibleNotes(state), [state.notes]);
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
   const [labelId, setLabelId] = useState('');
@@ -1230,10 +1231,10 @@ function NoteCard({ note, state, actions, onOpen }: { note: StudyNote; state: Ap
 type ChatMessage = { role: 'user' | 'assistant'; content: string };
 
 function FlashcardsPage({ state, actions }: { state: AppState; actions: AppActions }) {
-  const labels = visibleLabels(state);
-  const subjects = visibleSubjects(state);
-  const notes = visibleNotes(state);
-  const allCards = visibleFlashcards(state);
+  const labels = useMemo(() => visibleLabels(state), [state.labels]);
+  const subjects = useMemo(() => visibleSubjects(state), [state.subjects]);
+  const notes = useMemo(() => visibleNotes(state), [state.notes]);
+  const allCards = useMemo(() => visibleFlashcards(state), [state.flashcards]);
   const [front, setFront] = useState('');
   const [back, setBack] = useState('');
   const [subjectId, setSubjectId] = useState(state.profile.aiTutor.activeSubjectId);
@@ -1552,7 +1553,7 @@ function FlashcardFullscreen({
 }
 
 function SubjectManager({ state, actions }: { state: AppState; actions: AppActions }) {
-  const subjects = visibleSubjects(state);
+  const subjects = useMemo(() => visibleSubjects(state), [state.subjects]);
   const [editingId, setEditingId] = useState('');
   const [draft, setDraft] = useState({
     name: '',
@@ -1651,16 +1652,16 @@ function AssistantPage({
   actions: AppActions;
   setPage: (page: Page) => void;
 }) {
-  const sessions = visibleSessions(state);
-  const tasks = visibleTasks(state);
-  const notes = visibleNotes(state);
-  const flashcards = visibleFlashcards(state);
-  const totals = studyTotals(sessions);
-  const streak = computeStreak(sessions);
-  const quests = dailyQuests(state);
-  const nextQuest = quests.find((quest) => !quest.completed);
-  const openTasks = tasks.filter((task) => !task.done);
-  const tutor = activeSubject(state);
+  const sessions = useMemo(() => visibleSessions(state), [state.sessions]);
+  const tasks = useMemo(() => visibleTasks(state), [state.tasks]);
+  const notes = useMemo(() => visibleNotes(state), [state.notes]);
+  const flashcards = useMemo(() => visibleFlashcards(state), [state.flashcards]);
+  const totals = useMemo(() => studyTotals(sessions), [sessions]);
+  const streak = useMemo(() => computeStreak(sessions), [sessions]);
+  const quests = useMemo(() => dailyQuests(state), [state.gamification, state.sessions, state.tasks]);
+  const nextQuest = useMemo(() => quests.find((quest) => !quest.completed), [quests]);
+  const openTasks = useMemo(() => tasks.filter((task) => !task.done), [tasks]);
+  const tutor = useMemo(() => activeSubject(state), [state.subjects, state.profile.aiTutor.activeSubjectId]);
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       role: 'assistant',
@@ -2199,7 +2200,7 @@ function TaskPicker({
 }
 
 function SessionList({ sessions, state, actions }: { sessions: StudySession[]; state: AppState; actions: AppActions }) {
-  const labels = visibleLabels(state);
+  const labels = useMemo(() => visibleLabels(state), [state.labels]);
   const [editingId, setEditingId] = useState('');
   if (sessions.length === 0) return <p className="muted">No sessions yet. Start with one focused minute.</p>;
   return (
