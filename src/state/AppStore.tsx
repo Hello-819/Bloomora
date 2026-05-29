@@ -7,6 +7,9 @@ import {
   useRef,
   useState,
   type ReactNode,
+  type MutableRefObject,
+  type Dispatch,
+  type SetStateAction,
 } from 'react';
 import type {
   ActiveTimer,
@@ -224,103 +227,15 @@ function appendSession(state: AppState, draft: SessionDraft): AppState | null {
   return refreshAchievements(next);
 }
 
-export function AppStoreProvider({ children }: { children: ReactNode }) {
-  const [state, setState] = useState<AppState | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [toasts, setToasts] = useState<ToastMessage[]>([]);
-  const stateRef = useRef<AppState | null>(null);
 
-  const notify = useCallback((title: string, detail?: string, kind: ToastKind = 'info') => {
-    const toast = { id: createId('toast'), title, detail, kind };
-    setToasts((items) => [toast, ...items].slice(0, 4));
-    window.setTimeout(() => {
-      setToasts((items) => items.filter((item) => item.id !== toast.id));
-    }, 5200);
-  }, []);
-
-  const commit = useCallback(
-    (next: AppState, options: { silent?: boolean } = {}) => {
-      const finalState = bumpState(next);
-      stateRef.current = finalState;
-      setState(finalState);
-      saveAppState(finalState).catch((error) => {
-        console.error(error);
-        if (!options.silent) notify('Could not save locally', 'Your browser blocked the local database write.', 'danger');
-      });
-    },
-    [notify],
-  );
-
-  useEffect(() => {
-    let active = true;
-    loadAppState()
-      .then((loaded) => {
-        if (!active) return;
-        const refreshed = refreshAchievements(loaded);
-        stateRef.current = refreshed;
-        setState(refreshed);
-      })
-      .catch((error) => {
-        console.error(error);
-        notify('Bloomora could not open its local database', 'Try a modern browser or clear site data.', 'danger');
-      })
-      .finally(() => {
-        if (active) setLoading(false);
-      });
-    return () => {
-      active = false;
-    };
-  }, [notify]);
-
-  useEffect(() => {
-    const client = getSupabaseClient();
-    if (!client) return;
-    let active = true;
-    getCurrentUser(client)
-      .then((user) => {
-        if (!active || !stateRef.current) return;
-        if (user) {
-          commit(
-            {
-              ...stateRef.current,
-              sync: {
-                enabled: true,
-                status: 'idle',
-                userEmail: user.email,
-                lastSyncAt: stateRef.current.sync.lastSyncAt,
-              },
-            },
-            { silent: true },
-          );
-        }
-      })
-      .catch(() => undefined);
-    const {
-      data: { subscription },
-    } = client.auth.onAuthStateChange((_event, session) => {
-      if (!stateRef.current) return;
-      commit(
-        {
-          ...stateRef.current,
-          sync: session?.user
-            ? {
-                ...stateRef.current.sync,
-                enabled: true,
-                userEmail: session.user.email,
-                status: 'idle',
-              }
-            : { enabled: false, status: 'offline' },
-        },
-        { silent: true },
-      );
-    });
-    return () => {
-      active = false;
-      subscription.unsubscribe();
-    };
-  }, [commit]);
-
-  const actions = useMemo<AppActions>(() => {
+function useAppActions(
+  stateRef: MutableRefObject<AppState | null>,
+  commit: (next: AppState, options?: { silent?: boolean }) => void,
+  notify: (title: string, detail?: string, kind?: ToastKind) => void,
+  setToasts: Dispatch<SetStateAction<ToastMessage[]>>,
+  setState: Dispatch<SetStateAction<AppState | null>>
+): AppActions {
+  return useMemo<AppActions>(() => {
     const requireState = () => {
       if (!stateRef.current) throw new Error('Bloomora is still loading.');
       return stateRef.current;
@@ -1097,7 +1012,106 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
 
       notify,
     };
-  }, [commit, notify]);
+  }, [commit, notify, setToasts, setState]);
+}
+
+export function AppStoreProvider({ children }: { children: ReactNode }) {
+  const [state, setState] = useState<AppState | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [toasts, setToasts] = useState<ToastMessage[]>([]);
+  const stateRef = useRef<AppState | null>(null);
+
+  const notify = useCallback((title: string, detail?: string, kind: ToastKind = 'info') => {
+    const toast = { id: createId('toast'), title, detail, kind };
+    setToasts((items) => [toast, ...items].slice(0, 4));
+    window.setTimeout(() => {
+      setToasts((items) => items.filter((item) => item.id !== toast.id));
+    }, 5200);
+  }, []);
+
+  const commit = useCallback(
+    (next: AppState, options: { silent?: boolean } = {}) => {
+      const finalState = bumpState(next);
+      stateRef.current = finalState;
+      setState(finalState);
+      saveAppState(finalState).catch((error) => {
+        console.error(error);
+        if (!options.silent) notify('Could not save locally', 'Your browser blocked the local database write.', 'danger');
+      });
+    },
+    [notify],
+  );
+
+  useEffect(() => {
+    let active = true;
+    loadAppState()
+      .then((loaded) => {
+        if (!active) return;
+        const refreshed = refreshAchievements(loaded);
+        stateRef.current = refreshed;
+        setState(refreshed);
+      })
+      .catch((error) => {
+        console.error(error);
+        notify('Bloomora could not open its local database', 'Try a modern browser or clear site data.', 'danger');
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [notify]);
+
+  useEffect(() => {
+    const client = getSupabaseClient();
+    if (!client) return;
+    let active = true;
+    getCurrentUser(client)
+      .then((user) => {
+        if (!active || !stateRef.current) return;
+        if (user) {
+          commit(
+            {
+              ...stateRef.current,
+              sync: {
+                enabled: true,
+                status: 'idle',
+                userEmail: user.email,
+                lastSyncAt: stateRef.current.sync.lastSyncAt,
+              },
+            },
+            { silent: true },
+          );
+        }
+      })
+      .catch(() => undefined);
+    const {
+      data: { subscription },
+    } = client.auth.onAuthStateChange((_event, session) => {
+      if (!stateRef.current) return;
+      commit(
+        {
+          ...stateRef.current,
+          sync: session?.user
+            ? {
+                ...stateRef.current.sync,
+                enabled: true,
+                userEmail: session.user.email,
+                status: 'idle',
+              }
+            : { enabled: false, status: 'offline' },
+        },
+        { silent: true },
+      );
+    });
+    return () => {
+      active = false;
+      subscription.unsubscribe();
+    };
+  }, [commit]);
+
+  const actions = useAppActions(stateRef, commit, notify, setToasts, setState);
 
   const value = useMemo<AppStoreValue>(
     () => ({
