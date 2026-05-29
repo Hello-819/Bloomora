@@ -731,11 +731,11 @@ function WorldsPage({ state, actions }: { state: AppState; actions: AppActions }
 }
 
 function StatsPage({ state, actions }: { state: AppState; actions: AppActions }) {
-  const sessions = visibleSessions(state);
-  const totals = studyTotals(sessions);
-  const streak = computeStreak(sessions);
-  const level = computeIslandLevel(state.gamification.islandXpSec);
-  const achievements = nextAchievements(state);
+  const sessions = useMemo(() => visibleSessions(state), [state]);
+  const totals = useMemo(() => studyTotals(sessions), [sessions]);
+  const streak = useMemo(() => computeStreak(sessions), [sessions]);
+  const level = useMemo(() => computeIslandLevel(state.gamification.islandXpSec), [state.gamification.islandXpSec]);
+  const achievements = useMemo(() => nextAchievements(state), [state]);
   const byLabel = useMemo(() => {
     const map = new Map<string, number>();
     for (const session of sessions) {
