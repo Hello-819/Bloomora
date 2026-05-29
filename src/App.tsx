@@ -294,12 +294,6 @@ function TopAiDropdown({
   setPage: (page: Page) => void;
   onClose: () => void;
 }) {
-  const sessions = visibleSessions(state);
-  const tasks = visibleTasks(state);
-  const notes = visibleNotes(state);
-  const flashcards = visibleFlashcards(state);
-  const totals = studyTotals(sessions);
-  const streak = computeStreak(sessions);
   const subject = activeSubject(state);
   const [messages, setMessages] = useState<ChatMessage[]>([
     { role: 'assistant', content: 'Ask for a quick explanation, quiz, plan, note, or flashcard idea.' },
@@ -314,6 +308,12 @@ function TopAiDropdown({
     setMessages(nextMessages);
     setInput('');
     setSending(true);
+    const sessions = visibleSessions(state);
+    const tasks = visibleTasks(state);
+    const notes = visibleNotes(state);
+    const flashcards = visibleFlashcards(state);
+    const totals = studyTotals(sessions);
+    const streak = computeStreak(sessions);
     try {
       const response = await fetch('/api/ai-chat', {
         method: 'POST',
@@ -1232,7 +1232,6 @@ type ChatMessage = { role: 'user' | 'assistant'; content: string };
 function FlashcardsPage({ state, actions }: { state: AppState; actions: AppActions }) {
   const labels = visibleLabels(state);
   const subjects = visibleSubjects(state);
-  const notes = visibleNotes(state);
   const allCards = visibleFlashcards(state);
   const [front, setFront] = useState('');
   const [back, setBack] = useState('');
@@ -1301,6 +1300,7 @@ function FlashcardsPage({ state, actions }: { state: AppState; actions: AppActio
     const subject = subjects.find((item) => item.id === subjectId) || activeSubject(state);
     const prompt = aiPrompt.trim() || `Create revision flashcards for ${subject?.name || 'my subject'}.`;
     setGenerating(true);
+    const notes = visibleNotes(state);
     try {
       const response = await fetch('/api/ai-chat', {
         method: 'POST',
@@ -1351,6 +1351,7 @@ function FlashcardsPage({ state, actions }: { state: AppState; actions: AppActio
       return;
     }
     setGenerating(true);
+    const notes = visibleNotes(state);
     try {
       const response = await fetch('/api/ai-chat', {
         method: 'POST',
@@ -1654,7 +1655,6 @@ function AssistantPage({
   const sessions = visibleSessions(state);
   const tasks = visibleTasks(state);
   const notes = visibleNotes(state);
-  const flashcards = visibleFlashcards(state);
   const totals = studyTotals(sessions);
   const streak = computeStreak(sessions);
   const quests = dailyQuests(state);
@@ -1683,6 +1683,7 @@ function AssistantPage({
     setMessages(nextMessages);
     setInput('');
     setSending(true);
+    const flashcards = visibleFlashcards(state);
     try {
       const response = await fetch('/api/ai-chat', {
         method: 'POST',
