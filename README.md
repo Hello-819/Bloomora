@@ -1,51 +1,48 @@
 # Bloomora V2
 
-Bloomora is a study tracker with timers, labels, tasks, notes, a built-in study assistant, stats, Island/Garden progression, quests, achievements, backup import/export, ambient sound, LoFi music, and optional Supabase sync.
+Bloomora is a study tracker with a variety of features designed to enhance your productivity and help you achieve your learning goals.
 
-## Run locally
+You can access it at: **[https://bloomora.pages.dev](https://bloomora.pages.dev)**
 
-```bash
-npm install
-npm run dev
-```
+## Features
 
-Open the local URL printed by Vite.
+- **Timers**: Pomodoro and study timers to stay focused.
+- **Labels & Tasks**: Organize your study sessions and track your progress.
+- **Notes & Flashcards**: Built-in support for capturing knowledge and reviewing it via flashcards.
+- **Study Assistant**: A built-in AI assistant to help you with your studies.
+- **Stats**: Detailed statistics to review your performance and track your growth.
+- **Worlds Progression**: Gamified island/garden progression, quests, and achievements to keep you motivated.
+- **Audio Ambience**: Ambient sounds (fire, nature, sea, wind) and LoFi music to create a focused atmosphere.
+- **Data Management**: Backup import/export functionality to keep your data safe, along with optional syncing capabilities.
 
-## Data model
+## Screenshots
 
-- V2 stores app data in IndexedDB through Dexie under the `bloomora_v2` database.
-- On first load, it reads the old `localStorage` key `bloomora_v1` and migrates it into V2.
-- The old `bloomora_v1` key is not deleted or overwritten, so rollback is possible.
-- JSON export/import is versioned and validates a backup before replacing local data.
+### Home / Dashboard
+![Dashboard](assets/screenshots/dashboard.png)
 
-## Optional Supabase sync
+### Timer
+![Timer](assets/screenshots/timer.png)
 
-Bloomora works without an account. To enable optional sync, copy `.env.example` to `.env.local` and add:
+### Worlds
+![Worlds](assets/screenshots/worlds.png)
 
-```bash
-VITE_SUPABASE_URL=https://your-project.supabase.co
-VITE_SUPABASE_ANON_KEY=your-public-anon-key
-OPENROUTER_API_KEY=your-openrouter-key
-OPENROUTER_MODEL=openai/gpt-4o-mini
-```
+### Stats
+![Stats](assets/screenshots/stats.png)
 
-Run `supabase_schema_v2.sql` in the Supabase SQL editor. The schema uses dedicated `bloomora_*` table names and row-level security so users can only read and write their own rows.
+### Plan
+![Plan](assets/screenshots/plan.png)
 
-If you previously used the older Bloomora SQL, rerun the current `supabase_schema_v2.sql`. V2 intentionally syncs to `bloomora_profile_states`, `bloomora_labels`, `bloomora_tasks`, `bloomora_notes`, and `bloomora_sessions` to avoid collisions with old tables.
+### Notes
+![Notes](assets/screenshots/notes.png)
 
-The AI chatbot uses a dev-server API route at `/api/ai-chat` so the OpenRouter key stays server-side in `.env.local`. Do not rename it to `VITE_OPENROUTER_API_KEY`, because `VITE_*` variables are exposed to browser code.
+### Flashcards
+![Flashcards](assets/screenshots/flashcards.png)
 
-## Scripts
+### Assistant
+![Assistant](assets/screenshots/assistant.png)
 
-```bash
-npm run dev
-npm run build
-npm run test
-npm run test:e2e
-```
+### Archive
+![Archive](assets/screenshots/archive.png)
 
-Playwright may need browser binaries installed separately:
-
-```bash
-npx playwright install
-```
+### Settings
+![Settings](assets/screenshots/settings.png)
