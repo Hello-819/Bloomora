@@ -1892,19 +1892,7 @@ function ArchivePage({ state, actions }: { state: AppState; actions: AppActions 
   );
 }
 
-function SettingsPage({
-  state,
-  actions,
-  syncConfigured,
-}: {
-  state: AppState;
-  actions: AppActions;
-  syncConfigured: boolean;
-}) {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [preview, setPreview] = useState<ImportPreview | null>(null);
-
+function SettingsProfilePanel({ state, actions }: { state: AppState; actions: AppActions }) {
   const onBackgroundFile = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -1927,6 +1915,129 @@ function SettingsPage({
     event.target.value = '';
   };
 
+  return (
+    <Panel title="Study profile">
+      <label className="fieldLabel">
+        Display name
+        <input className="input" value={state.profile.displayName} onChange={(event) => actions.updateProfile({ displayName: event.target.value })} />
+      </label>
+      <label className="fieldLabel">
+        Weekly goal hours
+        <input
+          className="input"
+          type="number"
+          min={0}
+          max={80}
+          value={state.profile.weeklyGoalHours}
+          onChange={(event) => actions.updateProfile({ weeklyGoalHours: Math.max(0, Number(event.target.value)) })}
+        />
+      </label>
+      <label className="fieldLabel">
+        Daily goal minutes
+        <input
+          className="input"
+          type="number"
+          min={1}
+          max={1440}
+          value={state.profile.dailyGoalMinutes}
+          onChange={(event) => actions.updateProfile({ dailyGoalMinutes: Math.min(1440, Math.max(1, Number(event.target.value))) })}
+        />
+      </label>
+      <label className="fieldLabel">
+        Theme
+        <select className="input" value={state.profile.theme} onChange={(event) => actions.setTheme(event.target.value as ThemeName)}>
+          <option value="daybreak">Daybreak</option>
+          <option value="grove">Grove</option>
+          <option value="aqua">Aqua</option>
+          <option value="ink">Ink</option>
+        </select>
+      </label>
+      <label className="fieldLabel">
+        Light or dark
+        <select className="input" value={state.profile.colorMode} onChange={(event) => actions.setColorMode(event.target.value as ColorMode)}>
+          <option value="light">Light</option>
+          <option value="dark">Dark</option>
+        </select>
+      </label>
+      <label className="fieldLabel">
+        Require label for timer
+        <select
+          className="input"
+          value={state.profile.timerRequireLabel ? 'yes' : 'no'}
+          onChange={(event) => actions.updateProfile({ timerRequireLabel: event.target.value === 'yes' })}
+        >
+          <option value="yes">Yes</option>
+          <option value="no">No</option>
+        </select>
+      </label>
+      <label className="fieldLabel">
+        Website background
+        <span className="backgroundPicker">
+          <label className="fileButton">
+            Import image
+            <input type="file" accept="image/*" onChange={onBackgroundFile} />
+          </label>
+          {state.profile.backgroundImage && (
+            <button className="ghostButton" onClick={() => actions.updateProfile({ backgroundImage: undefined })}>
+              Clear image
+            </button>
+          )}
+        </span>
+      </label>
+    </Panel>
+  );
+}
+
+function SettingsTimersPanel({ state, actions }: { state: AppState; actions: AppActions }) {
+  return (
+    <Panel title="Timers and sound">
+      <div className="fieldGridTwo">
+        <label className="fieldLabel">
+          Focus minutes
+          <input className="input" type="number" min={1} max={180} value={state.profile.pomodoro.focusMin} onChange={(event) => actions.updateProfile({ pomodoro: { ...state.profile.pomodoro, focusMin: Number(event.target.value) } })} />
+        </label>
+        <label className="fieldLabel">
+          Break minutes
+          <input className="input" type="number" min={1} max={60} value={state.profile.pomodoro.shortBreakMin} onChange={(event) => actions.updateProfile({ pomodoro: { ...state.profile.pomodoro, shortBreakMin: Number(event.target.value) } })} />
+        </label>
+        <label className="fieldLabel">
+          Long break
+          <input className="input" type="number" min={1} max={120} value={state.profile.pomodoro.longBreakMin} onChange={(event) => actions.updateProfile({ pomodoro: { ...state.profile.pomodoro, longBreakMin: Number(event.target.value) } })} />
+        </label>
+        <label className="fieldLabel">
+          Long every
+          <input className="input" type="number" min={2} max={12} value={state.profile.pomodoro.longEvery} onChange={(event) => actions.updateProfile({ pomodoro: { ...state.profile.pomodoro, longEvery: Number(event.target.value) } })} />
+        </label>
+      </div>
+      <label className="fieldLabel">
+        Ambient while studying
+        <select className="input" value={state.profile.sessionAmbient.type} onChange={(event) => actions.updateProfile({ sessionAmbient: { ...state.profile.sessionAmbient, type: event.target.value as AppState['profile']['sessionAmbient']['type'] } })}>
+          <option value="off">Off</option>
+          <option value="fire">Fire</option>
+          <option value="wind">Wind</option>
+          <option value="sea">Sea</option>
+          <option value="nature">Nature</option>
+        </select>
+      </label>
+    </Panel>
+  );
+}
+
+function SettingsMusicPanel({ state, actions }: { state: AppState; actions: AppActions }) {
+  return (
+    <Panel title="Music">
+      <label className="fieldLabel">
+        YouTube video ID
+        <input className="input" value={state.profile.music.lofiVideoId} onChange={(event) => actions.updateProfile({ music: { ...state.profile.music, lofiVideoId: event.target.value.trim() } })} />
+      </label>
+      <p className="muted">The mini player stays loaded while you move around Bloomora.</p>
+    </Panel>
+  );
+}
+
+function SettingsBackupPanel({ state, actions }: { state: AppState; actions: AppActions }) {
+  const [preview, setPreview] = useState<ImportPreview | null>(null);
+
   const onImportFile = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -1941,169 +2052,85 @@ function SettingsPage({
   };
 
   return (
-    <section className="settingsGrid">
-      <Panel title="Study profile">
-        <label className="fieldLabel">
-          Display name
-          <input className="input" value={state.profile.displayName} onChange={(event) => actions.updateProfile({ displayName: event.target.value })} />
-        </label>
-        <label className="fieldLabel">
-          Weekly goal hours
-          <input
-            className="input"
-            type="number"
-            min={0}
-            max={80}
-            value={state.profile.weeklyGoalHours}
-            onChange={(event) => actions.updateProfile({ weeklyGoalHours: Math.max(0, Number(event.target.value)) })}
-          />
-        </label>
-        <label className="fieldLabel">
-          Daily goal minutes
-          <input
-            className="input"
-            type="number"
-            min={1}
-            max={1440}
-            value={state.profile.dailyGoalMinutes}
-            onChange={(event) => actions.updateProfile({ dailyGoalMinutes: Math.min(1440, Math.max(1, Number(event.target.value))) })}
-          />
-        </label>
-        <label className="fieldLabel">
-          Theme
-          <select className="input" value={state.profile.theme} onChange={(event) => actions.setTheme(event.target.value as ThemeName)}>
-            <option value="daybreak">Daybreak</option>
-            <option value="grove">Grove</option>
-            <option value="aqua">Aqua</option>
-            <option value="ink">Ink</option>
-          </select>
-        </label>
-        <label className="fieldLabel">
-          Light or dark
-          <select className="input" value={state.profile.colorMode} onChange={(event) => actions.setColorMode(event.target.value as ColorMode)}>
-            <option value="light">Light</option>
-            <option value="dark">Dark</option>
-          </select>
-        </label>
-        <label className="fieldLabel">
-          Require label for timer
-          <select
-            className="input"
-            value={state.profile.timerRequireLabel ? 'yes' : 'no'}
-            onChange={(event) => actions.updateProfile({ timerRequireLabel: event.target.value === 'yes' })}
-          >
-            <option value="yes">Yes</option>
-            <option value="no">No</option>
-          </select>
-        </label>
-        <label className="fieldLabel">
-          Website background
-          <span className="backgroundPicker">
-            <label className="fileButton">
-              Import image
-              <input type="file" accept="image/*" onChange={onBackgroundFile} />
-            </label>
-            {state.profile.backgroundImage && (
-              <button className="ghostButton" onClick={() => actions.updateProfile({ backgroundImage: undefined })}>
-                Clear image
-              </button>
-            )}
-          </span>
-        </label>
-      </Panel>
-
-      <Panel title="Timers and sound">
-        <div className="fieldGridTwo">
-          <label className="fieldLabel">
-            Focus minutes
-            <input className="input" type="number" min={1} max={180} value={state.profile.pomodoro.focusMin} onChange={(event) => actions.updateProfile({ pomodoro: { ...state.profile.pomodoro, focusMin: Number(event.target.value) } })} />
-          </label>
-          <label className="fieldLabel">
-            Break minutes
-            <input className="input" type="number" min={1} max={60} value={state.profile.pomodoro.shortBreakMin} onChange={(event) => actions.updateProfile({ pomodoro: { ...state.profile.pomodoro, shortBreakMin: Number(event.target.value) } })} />
-          </label>
-          <label className="fieldLabel">
-            Long break
-            <input className="input" type="number" min={1} max={120} value={state.profile.pomodoro.longBreakMin} onChange={(event) => actions.updateProfile({ pomodoro: { ...state.profile.pomodoro, longBreakMin: Number(event.target.value) } })} />
-          </label>
-          <label className="fieldLabel">
-            Long every
-            <input className="input" type="number" min={2} max={12} value={state.profile.pomodoro.longEvery} onChange={(event) => actions.updateProfile({ pomodoro: { ...state.profile.pomodoro, longEvery: Number(event.target.value) } })} />
-          </label>
-        </div>
-        <label className="fieldLabel">
-          Ambient while studying
-          <select className="input" value={state.profile.sessionAmbient.type} onChange={(event) => actions.updateProfile({ sessionAmbient: { ...state.profile.sessionAmbient, type: event.target.value as AppState['profile']['sessionAmbient']['type'] } })}>
-            <option value="off">Off</option>
-            <option value="fire">Fire</option>
-            <option value="wind">Wind</option>
-            <option value="sea">Sea</option>
-            <option value="nature">Nature</option>
-          </select>
-        </label>
-      </Panel>
-
-      <Panel title="Music">
-        <label className="fieldLabel">
-          YouTube video ID
-          <input className="input" value={state.profile.music.lofiVideoId} onChange={(event) => actions.updateProfile({ music: { ...state.profile.music, lofiVideoId: event.target.value.trim() } })} />
-        </label>
-        <p className="muted">The mini player stays loaded while you move around Bloomora.</p>
-      </Panel>
-
-      <Panel title="Backup">
-        <div className="buttonRow">
-          <button className="secondaryButton" onClick={() => downloadJson(`bloomora_v2_${dateKey()}.json`, createExportPayload(state))}>
-            Export backup
-          </button>
-          <label className="fileButton">
-            Import backup
-            <input type="file" accept="application/json" onChange={onImportFile} />
-          </label>
-        </div>
-        {preview && (
-          <div className="importPreview">
-            <strong>Ready to import</strong>
-            <span>
-              {preview.sessions} sessions, {preview.labels} labels, {preview.tasks} tasks, {preview.notes} notes, {preview.flashcards} flashcards, {formatDuration(preview.totalStudySec)} total.
-            </span>
-            <button className="primaryButton" onClick={() => actions.replaceState(preview.state)}>
-              Replace local data
-            </button>
-          </div>
-        )}
-        <button className="dangerButton" onClick={() => window.confirm('Reset Bloomora V2 local data?') && actions.resetAll()}>
-          Reset V2 data
+    <Panel title="Backup">
+      <div className="buttonRow">
+        <button className="secondaryButton" onClick={() => downloadJson(`bloomora_v2_${dateKey()}.json`, createExportPayload(state))}>
+          Export backup
         </button>
-      </Panel>
+        <label className="fileButton">
+          Import backup
+          <input type="file" accept="application/json" onChange={onImportFile} />
+        </label>
+      </div>
+      {preview && (
+        <div className="importPreview">
+          <strong>Ready to import</strong>
+          <span>
+            {preview.sessions} sessions, {preview.labels} labels, {preview.tasks} tasks, {preview.notes} notes, {preview.flashcards} flashcards, {formatDuration(preview.totalStudySec)} total.
+          </span>
+          <button className="primaryButton" onClick={() => actions.replaceState(preview.state)}>
+            Replace local data
+          </button>
+        </div>
+      )}
+      <button className="dangerButton" onClick={() => window.confirm('Reset Bloomora V2 local data?') && actions.resetAll()}>
+        Reset V2 data
+      </button>
+    </Panel>
+  );
+}
 
-      <Panel title="Optional sync">
-        <div className="syncStatusBox">
-          <strong>{syncConfigured ? state.sync.status : 'Not configured'}</strong>
-          <span>{state.sync.userEmail || state.sync.lastError || 'Local data stays on this browser.'}</span>
-        </div>
-        <div className="fieldGridTwo">
-          <input className="input" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="Email" />
-          <input className="input" value={password} onChange={(event) => setPassword(event.target.value)} placeholder="Password" type="password" />
-        </div>
-        <div className="buttonRow">
-          <button className="secondaryButton" onClick={() => actions.signIn(email, password)}>
-            Sign in
-          </button>
-          <button className="secondaryButton" onClick={() => actions.signUp(email, password)}>
-            Create account
-          </button>
-          <button className="primaryButton" onClick={() => actions.syncNow()}>
-            Sync now
-          </button>
-          <button className="secondaryButton" onClick={() => actions.importLegacyCloudProgress()}>
-            Import V1 cloud progress
-          </button>
-          <button className="ghostButton" onClick={() => actions.signOut()}>
-            Sign out
-          </button>
-        </div>
-      </Panel>
+function SettingsSyncPanel({ state, actions, syncConfigured }: { state: AppState; actions: AppActions; syncConfigured: boolean }) {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+
+  return (
+    <Panel title="Optional sync">
+      <div className="syncStatusBox">
+        <strong>{syncConfigured ? state.sync.status : 'Not configured'}</strong>
+        <span>{state.sync.userEmail || state.sync.lastError || 'Local data stays on this browser.'}</span>
+      </div>
+      <div className="fieldGridTwo">
+        <input className="input" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="Email" />
+        <input className="input" value={password} onChange={(event) => setPassword(event.target.value)} placeholder="Password" type="password" />
+      </div>
+      <div className="buttonRow">
+        <button className="secondaryButton" onClick={() => actions.signIn(email, password)}>
+          Sign in
+        </button>
+        <button className="secondaryButton" onClick={() => actions.signUp(email, password)}>
+          Create account
+        </button>
+        <button className="primaryButton" onClick={() => actions.syncNow()}>
+          Sync now
+        </button>
+        <button className="secondaryButton" onClick={() => actions.importLegacyCloudProgress()}>
+          Import V1 cloud progress
+        </button>
+        <button className="ghostButton" onClick={() => actions.signOut()}>
+          Sign out
+        </button>
+      </div>
+    </Panel>
+  );
+}
+
+function SettingsPage({
+  state,
+  actions,
+  syncConfigured,
+}: {
+  state: AppState;
+  actions: AppActions;
+  syncConfigured: boolean;
+}) {
+  return (
+    <section className="settingsGrid">
+      <SettingsProfilePanel state={state} actions={actions} />
+      <SettingsTimersPanel state={state} actions={actions} />
+      <SettingsMusicPanel state={state} actions={actions} />
+      <SettingsBackupPanel state={state} actions={actions} />
+      <SettingsSyncPanel state={state} actions={actions} syncConfigured={syncConfigured} />
     </section>
   );
 }
