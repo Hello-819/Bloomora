@@ -1,0 +1,16 @@
+<<<<<<< SEARCH
+<<<<<<< SEARCH
+  const generateCards = async () => {
+    const subject = subjects.find((item) => item.id === subjectId) || activeSubject(state);
+    const prompt = aiPrompt.trim();
+    if (!prompt) {
+      actions.notify('Prompt needed', 'Describe what you want the flashcards to cover.', 'warning');
+      return;
+    }
+    setGenerating(true);
+=======
+  const generateCards = async () => {
+    const subject = subjects.find((item) => item.id === subjectId) || activeSubject(state);
+    const prompt = aiPrompt.trim() || `Create revision flashcards for ${subject?.name || 'my subject'}.`;
+    setGenerating(true);
+>>>>>>> REPLACE

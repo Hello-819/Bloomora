@@ -1229,73 +1229,26 @@ function NoteCard({ note, state, actions, onOpen }: { note: StudyNote; state: Ap
 
 type ChatMessage = { role: 'user' | 'assistant'; content: string };
 
-function FlashcardsPage({ state, actions }: { state: AppState; actions: AppActions }) {
-  const labels = visibleLabels(state);
-  const subjects = visibleSubjects(state);
-  const notes = visibleNotes(state);
-  const allCards = visibleFlashcards(state);
-  const [front, setFront] = useState('');
-  const [back, setBack] = useState('');
-  const [subjectId, setSubjectId] = useState(state.profile.aiTutor.activeSubjectId);
-  const [labelId, setLabelId] = useState('');
-  const [studySubjectId, setStudySubjectId] = useState(state.profile.aiTutor.activeSubjectId);
-  const [studyIndex, setStudyIndex] = useState(0);
-  const [flipped, setFlipped] = useState(false);
-  const [studyFullscreen, setStudyFullscreen] = useState(false);
-  const [editingId, setEditingId] = useState('');
+function FlashcardCreator({
+  state,
+  actions,
+  subjects,
+  notes,
+  allCards,
+  subjectId,
+  labelId,
+}: {
+  state: AppState;
+  actions: AppActions;
+  subjects: StudySubject[];
+  notes: StudyNote[];
+  allCards: Flashcard[];
+  subjectId: string;
+  labelId: string;
+}) {
   const [generating, setGenerating] = useState(false);
   const [aiPrompt, setAiPrompt] = useState('');
   const [includeNotes, setIncludeNotes] = useState(false);
-  const cards = allCards.filter((card) => !studySubjectId || card.subjectId === studySubjectId);
-  const currentCard = cards[Math.min(studyIndex, Math.max(0, cards.length - 1))];
-
-  useEffect(() => {
-    const onKey = (event: KeyboardEvent) => {
-      const tag = document.activeElement?.tagName.toLowerCase();
-      if (tag === 'input' || tag === 'textarea' || tag === 'select') return;
-      if (event.code === 'Space' && currentCard) {
-        event.preventDefault();
-        setFlipped((value) => !value);
-      }
-      if (event.key === 'ArrowRight' && currentCard) {
-        setStudyIndex((value) => Math.min(cards.length - 1, value + 1));
-        setFlipped(false);
-      }
-      if (event.key === 'ArrowLeft' && currentCard) {
-        setStudyIndex((value) => Math.max(0, value - 1));
-        setFlipped(false);
-      }
-      if (event.key === 'Escape') setStudyFullscreen(false);
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [cards.length, currentCard?.id]);
-
-  useEffect(() => {
-    setStudyIndex(0);
-    setFlipped(false);
-  }, [studySubjectId]);
-
-  const resetForm = () => {
-    setFront('');
-    setBack('');
-    setLabelId('');
-    setEditingId('');
-  };
-
-  const saveCard = () => {
-    if (editingId) actions.updateFlashcard(editingId, { front, back, subjectId, labelId });
-    else actions.createFlashcard(front, back, subjectId, labelId);
-    resetForm();
-  };
-
-  const editCard = (card: Flashcard) => {
-    setEditingId(card.id);
-    setFront(card.front);
-    setBack(card.back);
-    setSubjectId(card.subjectId || '');
-    setLabelId(card.labelId || '');
-  };
 
   const generateCards = async () => {
     const subject = subjects.find((item) => item.id === subjectId) || activeSubject(state);
@@ -1387,7 +1340,73 @@ function FlashcardsPage({ state, actions }: { state: AppState; actions: AppActio
   };
 
   return (
-    <section className="stack">
+    <Panel title="AI creator">
+      <label className="fieldLabel">
+        Prompt
+        <textarea className="input textArea flashcardInput" value={aiPrompt} onChange={(event) => setAiPrompt(event.target.value)} placeholder="Make flashcards on AQA Biology infection and response, or create a note explaining completing the square..." />
+      </label>
+      <label className="checkRow aiOptionRow">
+        <input type="checkbox" checked={includeNotes} onChange={(event) => setIncludeNotes(event.target.checked)} />
+        <span>Use my saved notes as extra context</span>
+      </label>
+      <div className="buttonRow">
+        <button className="primaryButton" onClick={generateCards} disabled={generating}>
+          {generating ? 'Creating...' : 'Create flashcards'}
+        </button>
+        <button className="secondaryButton" onClick={generateNote} disabled={generating}>
+          Create note
+        </button>
+      </div>
+    </Panel>
+  );
+}
+
+function FlashcardStudy({
+  subjects,
+  allCards,
+  studySubjectId,
+  setStudySubjectId,
+}: {
+  subjects: StudySubject[];
+  allCards: Flashcard[];
+  studySubjectId: string;
+  setStudySubjectId: (id: string) => void;
+}) {
+  const [studyIndex, setStudyIndex] = useState(0);
+  const [flipped, setFlipped] = useState(false);
+  const [studyFullscreen, setStudyFullscreen] = useState(false);
+  const cards = allCards.filter((card) => !studySubjectId || card.subjectId === studySubjectId);
+  const currentCard = cards[Math.min(studyIndex, Math.max(0, cards.length - 1))];
+
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      const tag = document.activeElement?.tagName.toLowerCase();
+      if (tag === 'input' || tag === 'textarea' || tag === 'select') return;
+      if (event.code === 'Space' && currentCard) {
+        event.preventDefault();
+        setFlipped((value) => !value);
+      }
+      if (event.key === 'ArrowRight' && currentCard) {
+        setStudyIndex((value) => Math.min(cards.length - 1, value + 1));
+        setFlipped(false);
+      }
+      if (event.key === 'ArrowLeft' && currentCard) {
+        setStudyIndex((value) => Math.max(0, value - 1));
+        setFlipped(false);
+      }
+      if (event.key === 'Escape') setStudyFullscreen(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [cards.length, currentCard?.id]);
+
+  useEffect(() => {
+    setStudyIndex(0);
+    setFlipped(false);
+  }, [studySubjectId]);
+
+  return (
+    <>
       {studyFullscreen && currentCard && (
         <FlashcardFullscreen
           card={currentCard}
@@ -1400,6 +1419,175 @@ function FlashcardsPage({ state, actions }: { state: AppState; actions: AppActio
           onClose={() => setStudyFullscreen(false)}
         />
       )}
+      <Panel title="Study mode">
+        <label className="fieldLabel">
+          Study subject
+          <select className="input" value={studySubjectId} onChange={(event) => setStudySubjectId(event.target.value)}>
+            <option value="">All cards</option>
+            {subjects.map((subject) => (
+              <option key={subject.id} value={subject.id}>{subject.name}</option>
+            ))}
+          </select>
+        </label>
+        {currentCard ? (
+          <>
+            <button className={flipped ? 'flashcardStudy flashcardStudyBack' : 'flashcardStudy'} onClick={() => setFlipped(!flipped)}>
+              <span>{flipped ? 'Back' : 'Front'}</span>
+              <strong>{flipped ? currentCard.back : currentCard.front}</strong>
+              <small>Click or press Space to flip. Arrow keys move through the deck.</small>
+            </button>
+            <div className="buttonRow center">
+              <button className="secondaryButton" onClick={() => { setStudyIndex(Math.max(0, studyIndex - 1)); setFlipped(false); }}>Previous</button>
+              <span className="muted smallText">{Math.min(studyIndex + 1, cards.length)} of {cards.length}</span>
+              <button className="secondaryButton" onClick={() => { setStudyIndex(Math.min(cards.length - 1, studyIndex + 1)); setFlipped(false); }}>Next</button>
+              <button className="primaryButton" onClick={() => setStudyFullscreen(true)}>Fullscreen</button>
+            </div>
+          </>
+        ) : (
+          <p className="muted">Create a card or ask the AI to make cards from a prompt.</p>
+        )}
+      </Panel>
+    </>
+  );
+}
+
+function FlashcardDeck({
+  allCards,
+  subjects,
+  actions,
+  editCard,
+}: {
+  allCards: Flashcard[];
+  subjects: StudySubject[];
+  actions: AppActions;
+  editCard: (card: Flashcard) => void;
+}) {
+  return (
+    <Panel title="Card deck">
+      <div className="flashcardGrid">
+        {allCards.map((card) => {
+          const subject = card.subjectId ? subjects.find((item) => item.id === card.subjectId) : undefined;
+          return (
+            <article className="flashcardMini" key={card.id}>
+              <strong>{card.front}</strong>
+              <p>{card.back}</p>
+              <div className="itemFooter">
+                {subject && <span className="labelBadge">{subject.name}</span>}
+                <button className="textButton" onClick={() => editCard(card)}>Edit</button>
+                <button className="textButton dangerText" onClick={() => actions.deleteFlashcard(card.id)}>Archive</button>
+              </div>
+            </article>
+          );
+        })}
+        {allCards.length === 0 && <p className="muted">Your deck is empty. One good question is enough to start.</p>}
+      </div>
+    </Panel>
+  );
+}
+
+function FlashcardEditor({
+  front,
+  setFront,
+  back,
+  setBack,
+  subjectId,
+  setSubjectId,
+  labelId,
+  setLabelId,
+  editingId,
+  resetForm,
+  saveCard,
+  subjects,
+  labels,
+}: {
+  front: string;
+  setFront: (value: string) => void;
+  back: string;
+  setBack: (value: string) => void;
+  subjectId: string;
+  setSubjectId: (value: string) => void;
+  labelId: string;
+  setLabelId: (value: string) => void;
+  editingId: string;
+  resetForm: () => void;
+  saveCard: () => void;
+  subjects: StudySubject[];
+  labels: Label[];
+}) {
+  return (
+    <Panel title={editingId ? 'Edit flashcard' : 'New flashcard'}>
+      <label className="fieldLabel">
+        Front
+        <textarea className="input textArea flashcardInput" value={front} onChange={(event) => setFront(event.target.value)} placeholder="Question, prompt, term, or quote..." />
+      </label>
+      <label className="fieldLabel">
+        Back
+        <textarea className="input textArea flashcardInput" value={back} onChange={(event) => setBack(event.target.value)} placeholder="Answer, explanation, mark-scheme point..." />
+      </label>
+      <div className="fieldGridTwo">
+        <label className="fieldLabel">
+          Subject
+          <select className="input" value={subjectId} onChange={(event) => setSubjectId(event.target.value)}>
+            <option value="">General</option>
+            {subjects.map((subject) => (
+              <option key={subject.id} value={subject.id}>{subject.name}</option>
+            ))}
+          </select>
+        </label>
+        <label className="fieldLabel">
+          Label
+          <select className="input" value={labelId} onChange={(event) => setLabelId(event.target.value)}>
+            <option value="">No label</option>
+            {labels.map((label) => (
+              <option key={label.id} value={label.id}>{label.name}</option>
+            ))}
+          </select>
+        </label>
+      </div>
+      <div className="buttonRow">
+        <button className="primaryButton" onClick={saveCard}>{editingId ? 'Save card' : 'Add card'}</button>
+        {editingId && <button className="ghostButton" onClick={resetForm}>Cancel edit</button>}
+      </div>
+    </Panel>
+  );
+}
+
+function FlashcardsPage({ state, actions }: { state: AppState; actions: AppActions }) {
+  const labels = visibleLabels(state);
+  const subjects = visibleSubjects(state);
+  const notes = visibleNotes(state);
+  const allCards = visibleFlashcards(state);
+
+  const [front, setFront] = useState('');
+  const [back, setBack] = useState('');
+  const [subjectId, setSubjectId] = useState(state.profile.aiTutor.activeSubjectId);
+  const [labelId, setLabelId] = useState('');
+  const [editingId, setEditingId] = useState('');
+  const [studySubjectId, setStudySubjectId] = useState(state.profile.aiTutor.activeSubjectId);
+
+  const resetForm = () => {
+    setFront('');
+    setBack('');
+    setLabelId('');
+    setEditingId('');
+  };
+
+  const saveCard = () => {
+    if (editingId) actions.updateFlashcard(editingId, { front, back, subjectId, labelId });
+    else actions.createFlashcard(front, back, subjectId, labelId);
+    resetForm();
+  };
+
+  const editCard = (card: Flashcard) => {
+    setEditingId(card.id);
+    setFront(card.front);
+    setBack(card.back);
+    setSubjectId(card.subjectId || '');
+    setLabelId(card.labelId || '');
+  };
+
+  return (
+    <section className="stack">
       <div className="flashcardHero">
         <div>
           <p className="eyebrow">Flashcards</p>
@@ -1407,107 +1595,48 @@ function FlashcardsPage({ state, actions }: { state: AppState; actions: AppActio
           <p className="muted">Press Space to flip the study card. Ask AI from a prompt, with notes optional.</p>
         </div>
       </div>
-      <Panel title="AI creator">
-        <label className="fieldLabel">
-          Prompt
-          <textarea className="input textArea flashcardInput" value={aiPrompt} onChange={(event) => setAiPrompt(event.target.value)} placeholder="Make flashcards on AQA Biology infection and response, or create a note explaining completing the square..." />
-        </label>
-        <label className="checkRow aiOptionRow">
-          <input type="checkbox" checked={includeNotes} onChange={(event) => setIncludeNotes(event.target.checked)} />
-          <span>Use my saved notes as extra context</span>
-        </label>
-        <div className="buttonRow">
-          <button className="primaryButton" onClick={generateCards} disabled={generating}>
-            {generating ? 'Creating...' : 'Create flashcards'}
-          </button>
-          <button className="secondaryButton" onClick={generateNote} disabled={generating}>
-            Create note
-          </button>
-        </div>
-      </Panel>
+
+      <FlashcardCreator
+        state={state}
+        actions={actions}
+        subjects={subjects}
+        notes={notes}
+        allCards={allCards}
+        subjectId={subjectId}
+        labelId={labelId}
+      />
+
       <div className="splitGrid">
-        <Panel title={editingId ? 'Edit flashcard' : 'New flashcard'}>
-          <label className="fieldLabel">
-            Front
-            <textarea className="input textArea flashcardInput" value={front} onChange={(event) => setFront(event.target.value)} placeholder="Question, prompt, term, or quote..." />
-          </label>
-          <label className="fieldLabel">
-            Back
-            <textarea className="input textArea flashcardInput" value={back} onChange={(event) => setBack(event.target.value)} placeholder="Answer, explanation, mark-scheme point..." />
-          </label>
-          <div className="fieldGridTwo">
-            <label className="fieldLabel">
-              Subject
-              <select className="input" value={subjectId} onChange={(event) => setSubjectId(event.target.value)}>
-                <option value="">General</option>
-                {subjects.map((subject) => (
-                  <option key={subject.id} value={subject.id}>{subject.name}</option>
-                ))}
-              </select>
-            </label>
-            <label className="fieldLabel">
-              Label
-              <select className="input" value={labelId} onChange={(event) => setLabelId(event.target.value)}>
-                <option value="">No label</option>
-                {labels.map((label) => (
-                  <option key={label.id} value={label.id}>{label.name}</option>
-                ))}
-              </select>
-            </label>
-          </div>
-          <div className="buttonRow">
-            <button className="primaryButton" onClick={saveCard}>{editingId ? 'Save card' : 'Add card'}</button>
-            {editingId && <button className="ghostButton" onClick={resetForm}>Cancel edit</button>}
-          </div>
-        </Panel>
-        <Panel title="Study mode">
-          <label className="fieldLabel">
-            Study subject
-            <select className="input" value={studySubjectId} onChange={(event) => setStudySubjectId(event.target.value)}>
-              <option value="">All cards</option>
-              {subjects.map((subject) => (
-                <option key={subject.id} value={subject.id}>{subject.name}</option>
-              ))}
-            </select>
-          </label>
-          {currentCard ? (
-            <>
-              <button className={flipped ? 'flashcardStudy flashcardStudyBack' : 'flashcardStudy'} onClick={() => setFlipped(!flipped)}>
-                <span>{flipped ? 'Back' : 'Front'}</span>
-                <strong>{flipped ? currentCard.back : currentCard.front}</strong>
-                <small>Click or press Space to flip. Arrow keys move through the deck.</small>
-              </button>
-              <div className="buttonRow center">
-                <button className="secondaryButton" onClick={() => { setStudyIndex(Math.max(0, studyIndex - 1)); setFlipped(false); }}>Previous</button>
-                <span className="muted smallText">{Math.min(studyIndex + 1, cards.length)} of {cards.length}</span>
-                <button className="secondaryButton" onClick={() => { setStudyIndex(Math.min(cards.length - 1, studyIndex + 1)); setFlipped(false); }}>Next</button>
-                <button className="primaryButton" onClick={() => setStudyFullscreen(true)}>Fullscreen</button>
-              </div>
-            </>
-          ) : (
-            <p className="muted">Create a card or ask the AI to make cards from a prompt.</p>
-          )}
-        </Panel>
+        <FlashcardEditor
+          front={front}
+          setFront={setFront}
+          back={back}
+          setBack={setBack}
+          subjectId={subjectId}
+          setSubjectId={setSubjectId}
+          labelId={labelId}
+          setLabelId={setLabelId}
+          editingId={editingId}
+          resetForm={resetForm}
+          saveCard={saveCard}
+          subjects={subjects}
+          labels={labels}
+        />
+
+        <FlashcardStudy
+          subjects={subjects}
+          allCards={allCards}
+          studySubjectId={studySubjectId}
+          setStudySubjectId={setStudySubjectId}
+        />
       </div>
-      <Panel title="Card deck">
-        <div className="flashcardGrid">
-          {allCards.map((card) => {
-            const subject = card.subjectId ? subjects.find((item) => item.id === card.subjectId) : undefined;
-            return (
-              <article className="flashcardMini" key={card.id}>
-                <strong>{card.front}</strong>
-                <p>{card.back}</p>
-                <div className="itemFooter">
-                  {subject && <span className="labelBadge">{subject.name}</span>}
-                  <button className="textButton" onClick={() => editCard(card)}>Edit</button>
-                  <button className="textButton dangerText" onClick={() => actions.deleteFlashcard(card.id)}>Archive</button>
-                </div>
-              </article>
-            );
-          })}
-          {allCards.length === 0 && <p className="muted">Your deck is empty. One good question is enough to start.</p>}
-        </div>
-      </Panel>
+
+      <FlashcardDeck
+        allCards={allCards}
+        subjects={subjects}
+        actions={actions}
+        editCard={editCard}
+      />
     </section>
   );
 }
