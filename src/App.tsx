@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
-import * as XLSX from 'xlsx';
 import type { AppState, ColorMode, Flashcard, Label, StudyNote, StudySession, StudySubject, StudyTask, ThemeName, TimerMode } from './types';
 import { useAppStore, type AppActions } from './state/AppStore';
 import {
@@ -2643,8 +2642,9 @@ function TimetablePage({ state, actions }: { state: AppState; actions: AppAction
     if (!file) return;
 
     const reader = new FileReader();
-    reader.onload = (evt) => {
+    reader.onload = async (evt) => {
       try {
+        const XLSX = await import('xlsx');
         const bstr = evt.target?.result;
         const wb = XLSX.read(bstr, { type: 'binary' });
         const wsname = wb.SheetNames[0];
