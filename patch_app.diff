@@ -1,0 +1,8 @@
+<<<<<<< SEARCH
+  studyTotals,
+} from './lib/gamification';
+=======
+  studyTotals,
+  studyByLabel,
+} from './lib/gamification';
+>>>>>>> REPLACE

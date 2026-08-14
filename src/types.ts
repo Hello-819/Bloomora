@@ -105,6 +105,8 @@ export interface ProfileSettings {
   aiTutor: {
     activeSubjectId: string;
   };
+  hiddenSidebarItems: string[];
+  hideAiTutor?: boolean;
 }
 
 export interface RewardLogItem {

@@ -9,6 +9,7 @@ import {
   dailyQuests,
   nextAchievements,
   studyTotals,
+  studyByLabel,
 } from './lib/gamification';
 import { addDaysMs, dateKey, startOfDayMs, startOfWeekMs, startOfMonthMs, startOfYearMs } from './lib/dates';
 import { compactHours, formatClock, formatDateTime, formatDuration } from './lib/format';
@@ -111,7 +112,7 @@ function labelName(state: AppState, session: StudySession): string {
 
 function islandAsset(level: number): string {
   const n = Math.min(6, Math.max(1, Math.floor(level) + 1));
-  return `/assets/images/v2/island_${String(n).padStart(2, '0')}.svg`;
+  return `/assets/images/v2/island_${String(n).padStart(2, '0')}.jpg`;
 }
 
 function useHashPage(): [Page, (page: Page) => void] {
@@ -161,6 +162,23 @@ function App() {
   }, [state?.profile.backgroundImage, state?.profile.colorMode, state?.profile.theme]);
 
   useAmbientAudio(state);
+
+  useEffect(() => {
+    if (!state || !state.activeTimer?.running) {
+      document.title = 'Bloomora V2';
+      return;
+    }
+    const timer = state.activeTimer;
+    if (timer.mode === 'stopwatch') {
+      const elapsed = elapsedForTimer(timer, Date.now());
+      document.title = `${formatClock(elapsed)} - Bloomora`;
+    } else {
+      const remaining = remainingForTimer(timer, Date.now());
+      if (remaining !== null) {
+        document.title = `${formatClock(remaining)} - Bloomora`;
+      }
+    }
+  }, [state?.activeTimer, state?.activeTimer?.running, state?.activeTimer?.accumulatedSec]);
 
   if (loading || !state) {
     return (
@@ -212,17 +230,48 @@ function AsideNav({
 }) {
   const totals = studyTotals(visibleSessions(state));
   const dailyGoalSec = Math.max(60, state.profile.dailyGoalMinutes * 60);
+  const hiddenItems = state.profile.hiddenSidebarItems || [];
+  const [menuOpen, setMenuOpen] = useState(false);
+
   return (
     <aside className="sideNav">
-      <button className="brandButton" onClick={() => setPage('dashboard')} aria-label="Go home">
-        <span className="brandMark">B</span>
-        <span>
-          <strong>Bloomora</strong>
-          <small>Study companion</small>
-        </span>
-      </button>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <button className="brandButton" onClick={() => setPage('dashboard')} aria-label="Go home">
+          <span className="brandMark">B</span>
+          <span>
+            <strong>Bloomora</strong>
+            <small>Study companion</small>
+          </span>
+        </button>
+        {hiddenItems.length > 0 && (
+          <div style={{ position: 'relative' }}>
+            <button className="ghostButton" style={{ padding: '4px 8px' }} onClick={() => setMenuOpen(!menuOpen)}>
+              ⋮
+            </button>
+            {menuOpen && (
+              <div className="topAiDropdown" style={{ top: '100%', right: 0, marginTop: '4px', minWidth: '150px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  {NAV_ITEMS.filter(item => hiddenItems.includes(item.id)).map(item => (
+                    <button
+                      key={item.id}
+                      className="navButton"
+                      style={{ background: page === item.id ? 'var(--surface-strong)' : 'transparent' }}
+                      onClick={() => {
+                        setPage(item.id);
+                        setMenuOpen(false);
+                      }}
+                    >
+                      {item.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
       <nav aria-label="Main navigation">
-        {NAV_ITEMS.map((item) => (
+        {NAV_ITEMS.filter(item => !hiddenItems.includes(item.id)).map((item) => (
           <button
             key={item.id}
             className={page === item.id ? 'navButton navButtonActive' : 'navButton'}
@@ -270,12 +319,14 @@ function TopBar({
         <button className="ghostButton" onClick={() => setPage('timer')}>
           Study now
         </button>
-        <div className="topAiWrap">
-          <button className="topAiButton" onClick={() => setAiOpen((open) => !open)} aria-expanded={aiOpen}>
-            AI
-          </button>
-          {aiOpen && <TopAiDropdown state={state} actions={actions} setPage={setPage} onClose={() => setAiOpen(false)} />}
-        </div>
+        {!state.profile.hideAiTutor && (
+          <div className="topAiWrap">
+            <button className="topAiButton" onClick={() => setAiOpen((open) => !open)} aria-expanded={aiOpen}>
+              AI
+            </button>
+            {aiOpen && <TopAiDropdown state={state} actions={actions} setPage={setPage} onClose={() => setAiOpen(false)} />}
+          </div>
+        )}
         <div className="syncPill" title={state.sync.lastError || state.sync.status}>
           {state.sync.enabled ? state.sync.status : 'Local'}
         </div>
@@ -473,19 +524,7 @@ function DashboardPage({
         <MetricCard title="Garden" value={tree.current.name} detail={`${tree.pct} percent to next stage`} />
       </div>
       <div className="splitGrid">
-        <Panel title="Daily quests" action={<button className="textButton" onClick={() => actions.harvestFruits()}>Harvest</button>}>
-          <div className="questList">
-            {quests.map((quest) => (
-              <div className="questItem" key={quest.id}>
-                <div>
-                  <strong>{quest.title}</strong>
-                  <span>{quest.detail}</span>
-                </div>
-                <ProgressBar value={quest.progress} max={1} />
-              </div>
-            ))}
-          </div>
-        </Panel>
+        <LabelStats state={state} />
         {upcomingExams.length > 0 && (
           <Panel title="Upcoming Exams" action={<button className="textButton" onClick={() => setPage('plan')}>Manage subjects</button>}>
             <div className="questList">
@@ -2170,6 +2209,40 @@ function SettingsProfilePanel({ state, actions }: { state: AppState; actions: Ap
           )}
         </span>
       </label>
+      <label className="fieldLabel">
+        Hide AI Tutor button
+        <select
+          className="input"
+          value={state.profile.hideAiTutor ? 'yes' : 'no'}
+          onChange={(event) => actions.updateProfile({ hideAiTutor: event.target.value === 'yes' })}
+        >
+          <option value="yes">Yes</option>
+          <option value="no">No</option>
+        </select>
+      </label>
+      <label className="fieldLabel">
+        Hide sidebar items
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+          {NAV_ITEMS.filter(item => !['dashboard', 'timer', 'settings'].includes(item.id)).map(item => {
+            const isHidden = state.profile.hiddenSidebarItems?.includes(item.id);
+            return (
+              <label key={item.id} className="checkRow" style={{ background: 'var(--surface-strong)', padding: '6px 12px', borderRadius: '100px' }}>
+                <input
+                  type="checkbox"
+                  checked={isHidden}
+                  onChange={(e) => {
+                    const next = e.target.checked
+                      ? [...(state.profile.hiddenSidebarItems || []), item.id]
+                      : (state.profile.hiddenSidebarItems || []).filter(id => id !== item.id);
+                    actions.updateProfile({ hiddenSidebarItems: next });
+                  }}
+                />
+                {item.label}
+              </label>
+            );
+          })}
+        </div>
+      </label>
     </Panel>
   );
 }
@@ -2772,5 +2845,55 @@ function TimetablePage({ state, actions }: { state: AppState; actions: AppAction
         )}
       </Panel>
     </section>
+  );
+}
+
+function LabelStats({ state }: { state: AppState }) {
+  const [timeframe, setTimeframe] = useState<'all' | 'year' | 'month' | 'week' | 'today'>('all');
+  const sessions = useMemo(() => visibleSessions(state), [state.sessions]);
+  const stats = useMemo(() => studyByLabel(sessions, state.labels, timeframe), [sessions, state.labels, timeframe]);
+
+  const conicStops = useMemo(() => {
+    let currentDeg = 0;
+    return stats.items.map(item => {
+      const degrees = (item.duration / Math.max(1, stats.totalSec)) * 360;
+      const stop = `${item.color} ${currentDeg}deg ${currentDeg + degrees}deg`;
+      currentDeg += degrees;
+      return stop;
+    }).join(', ');
+  }, [stats]);
+
+  return (
+    <Panel title="Study by label">
+      <Segmented
+        value={timeframe}
+        onChange={setTimeframe}
+        items={[
+          ['all', 'All'],
+          ['year', 'Year'],
+          ['month', 'Month'],
+          ['week', 'Week'],
+          ['today', 'Today'],
+        ]}
+      />
+      {stats.totalSec === 0 ? (
+        <p className="muted" style={{ padding: '24px 0', textAlign: 'center' }}>No sessions found.</p>
+      ) : (
+        <div style={{ display: 'flex', gap: '24px', alignItems: 'center', marginTop: '16px' }}>
+          <div style={{ width: '120px', height: '120px', borderRadius: '50%', background: `conic-gradient(${conicStops})`, flexShrink: 0 }}></div>
+          <div className="questList" style={{ flexGrow: 1 }}>
+            {stats.items.map(item => (
+              <div className="questItem" key={item.id}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: item.color }}></span>
+                  <strong>{item.name}</strong>
+                </div>
+                <span>{formatDuration(item.duration)}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </Panel>
   );
 }

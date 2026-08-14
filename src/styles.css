@@ -207,6 +207,16 @@ body[data-mode="dark"] .sideNav {
   background: rgba(16, 22, 20, 0.82);
 }
 
+body[data-custom-bg="on"] .sideNav {
+  background: rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
+
+body[data-mode="dark"][data-custom-bg="on"] .sideNav {
+  background: rgba(16, 22, 20, 0.4);
+}
+
 .brandButton {
   display: flex;
   align-items: center;
@@ -674,6 +684,11 @@ body[data-mode="dark"] .sideNav {
   margin: 0;
   color: var(--muted);
   white-space: pre-wrap;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .assistantHero {
