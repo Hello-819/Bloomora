@@ -437,8 +437,8 @@ function DashboardPage({
   const weeklyGoal = Math.max(1, state.profile.weeklyGoalHours * 3600);
   const quote = useMemo(() => MOTIVATION_QUOTES[Math.floor(Math.random() * MOTIVATION_QUOTES.length)], []);
 
-  const visibleSubjects = state.subjects.filter(s => !s.deletedAt && s.examDate);
-  const upcomingExams = [...visibleSubjects]
+  const subjectsWithExamDate = state.subjects.filter((s) => !s.deletedAt && s.examDate);
+  const upcomingExams = [...subjectsWithExamDate]
     .filter(s => !isNaN(new Date(s.examDate).getTime()))
     .sort((a, b) => new Date(a.examDate).getTime() - new Date(b.examDate).getTime())
     .slice(0, 3);
