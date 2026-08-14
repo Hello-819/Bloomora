@@ -62,5 +62,6 @@ export function createDefaultState(): AppState {
       enabled: false,
       status: 'offline',
     },
+    timetable: undefined,
   };
 }

@@ -116,6 +116,7 @@ export interface AppActions {
   signOut(): Promise<void>;
   dismissToast(id: string): void;
   notify(title: string, detail?: string, kind?: ToastKind): void;
+  setTimetable(timetable: AppState['timetable']): void;
 }
 
 export interface AppStoreValue {
@@ -1011,6 +1012,13 @@ function useAppActions(
       },
 
       notify,
+      setTimetable(timetable) {
+        const current = requireState();
+        commit({
+          ...current,
+          timetable,
+        });
+      },
     };
   }, [commit, notify, setToasts, setState]);
 }

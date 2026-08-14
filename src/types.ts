@@ -167,6 +167,18 @@ export interface SyncState {
   lastError?: string;
 }
 
+export interface TimetableEntry {
+  id: string;
+  day: string;
+  timeHr: string;
+  module: string;
+}
+
+export interface Timetable {
+  entries: TimetableEntry[];
+  updatedAt: string;
+}
+
 export interface AppState {
   version: 2;
   createdAt: string;
@@ -181,6 +193,7 @@ export interface AppState {
   gamification: GamificationState;
   activeTimer?: ActiveTimer;
   sync: SyncState;
+  timetable?: Timetable;
 }
 
 export interface SessionDraft {

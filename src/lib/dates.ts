@@ -22,6 +22,16 @@ export function startOfWeekMs(input: string | number | Date = new Date()): numbe
   return new Date(date.getFullYear(), date.getMonth(), date.getDate() + diff).getTime();
 }
 
+export function startOfMonthMs(input: string | number | Date = new Date()): number {
+  const date = new Date(input);
+  return new Date(date.getFullYear(), date.getMonth(), 1).getTime();
+}
+
+export function startOfYearMs(input: string | number | Date = new Date()): number {
+  const date = new Date(input);
+  return new Date(date.getFullYear(), 0, 1).getTime();
+}
+
 export function addDaysMs(ms: number, days: number): number {
   const date = new Date(ms);
   date.setDate(date.getDate() + days);

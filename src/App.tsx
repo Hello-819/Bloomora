@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ChangeEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
 import type { AppState, ColorMode, Flashcard, Label, StudyNote, StudySession, StudySubject, StudyTask, ThemeName, TimerMode } from './types';
 import { useAppStore, type AppActions } from './state/AppStore';
 import {
@@ -10,12 +10,12 @@ import {
   nextAchievements,
   studyTotals,
 } from './lib/gamification';
-import { addDaysMs, dateKey, startOfDayMs } from './lib/dates';
+import { addDaysMs, dateKey, startOfDayMs, startOfWeekMs, startOfMonthMs, startOfYearMs } from './lib/dates';
 import { compactHours, formatClock, formatDateTime, formatDuration } from './lib/format';
 import { elapsedForTimer, remainingForTimer } from './lib/timers';
 import { createExportPayload, downloadJson, validateImportText, type ImportPreview } from './lib/exportImport';
 
-type Page = 'dashboard' | 'timer' | 'worlds' | 'stats' | 'plan' | 'notes' | 'flashcards' | 'assistant' | 'archive' | 'settings';
+type Page = 'dashboard' | 'timer' | 'worlds' | 'stats' | 'plan' | 'timetable' | 'notes' | 'flashcards' | 'assistant' | 'archive' | 'settings';
 type AiApiResponse = { reply?: string; error?: string; model?: string; usage?: unknown };
 
 const NAV_ITEMS: Array<{ id: Page; label: string }> = [
@@ -24,6 +24,7 @@ const NAV_ITEMS: Array<{ id: Page; label: string }> = [
   { id: 'worlds', label: 'Worlds' },
   { id: 'stats', label: 'Stats' },
   { id: 'plan', label: 'Plan' },
+  { id: 'timetable', label: 'Timetable' },
   { id: 'notes', label: 'Notes' },
   { id: 'flashcards', label: 'Cards' },
   { id: 'assistant', label: 'Assistant' },
@@ -181,6 +182,7 @@ function App() {
           {page === 'worlds' && <WorldsPage state={state} actions={actions} />}
           {page === 'stats' && <StatsPage state={state} actions={actions} />}
           {page === 'plan' && <PlanPage state={state} actions={actions} />}
+          {page === 'timetable' && <TimetablePage state={state} actions={actions} />}
           {page === 'notes' && <NotesPage state={state} actions={actions} />}
           {page === 'flashcards' && <FlashcardsPage state={state} actions={actions} />}
           {page === 'assistant' && <AssistantPage state={state} actions={actions} setPage={setPage} />}
@@ -434,6 +436,12 @@ function DashboardPage({
   const weeklyGoal = Math.max(1, state.profile.weeklyGoalHours * 3600);
   const quote = useMemo(() => MOTIVATION_QUOTES[Math.floor(Math.random() * MOTIVATION_QUOTES.length)], []);
 
+  const subjectsWithExamDate = state.subjects.filter((s) => !s.deletedAt && s.examDate);
+  const upcomingExams = [...subjectsWithExamDate]
+    .filter(s => !isNaN(new Date(s.examDate).getTime()))
+    .sort((a, b) => new Date(a.examDate).getTime() - new Date(b.examDate).getTime())
+    .slice(0, 3);
+
   return (
     <section className="stack">
       <div className="heroBand">
@@ -478,6 +486,21 @@ function DashboardPage({
             ))}
           </div>
         </Panel>
+        {upcomingExams.length > 0 && (
+          <Panel title="Upcoming Exams" action={<button className="textButton" onClick={() => setPage('plan')}>Manage subjects</button>}>
+            <div className="questList">
+              {upcomingExams.map(subject => {
+                const daysLeft = Math.ceil((new Date(subject.examDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+                return (
+                  <div className="questItem" key={subject.id}>
+                    <strong>{subject.name} ({subject.qualification})</strong>
+                    <span style={{ color: daysLeft < 30 ? 'var(--danger)' : 'var(--muted)' }}>{daysLeft > 0 ? `${daysLeft} days left` : 'Past'}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </Panel>
+        )}
         <Panel title="Recent sessions" action={<button className="textButton" onClick={() => setPage('stats')}>All stats</button>}>
           <SessionList sessions={recent} state={state} actions={actions} />
         </Panel>
@@ -739,14 +762,25 @@ function StatsPage({ state, actions }: { state: AppState; actions: AppActions })
   const streak = useMemo(() => computeStreak(sessions), [sessions]);
   const level = useMemo(() => computeIslandLevel(state.gamification.islandXpSec), [state.gamification.islandXpSec]);
   const achievements = useMemo(() => nextAchievements(state), [state]);
+  const [labelFilter, setLabelFilter] = useState<'today' | 'week' | 'month' | 'year' | 'all'>('all');
+
   const byLabel = useMemo(() => {
     const map = new Map<string, number>();
+    const now = Date.now();
+    let threshold = 0;
+    if (labelFilter === 'today') threshold = startOfDayMs(now);
+    if (labelFilter === 'week') threshold = startOfWeekMs(now);
+    if (labelFilter === 'month') threshold = startOfMonthMs(now);
+    if (labelFilter === 'year') threshold = startOfYearMs(now);
+
     for (const session of sessions) {
-      const name = labelName(state, session);
-      map.set(name, (map.get(name) || 0) + session.durationSec);
+      if (Date.parse(session.endAt) >= threshold) {
+        const name = labelName(state, session);
+        map.set(name, (map.get(name) || 0) + session.durationSec);
+      }
     }
     return Array.from(map.entries()).sort((a, b) => b[1] - a[1]).slice(0, 6);
-  }, [sessions, state]);
+  }, [sessions, state, labelFilter]);
 
   const bestHour = useMemo(() => {
     const hours = new Array<number>(24).fill(0);
@@ -778,10 +812,21 @@ function StatsPage({ state, actions }: { state: AppState; actions: AppActions })
         </Panel>
       </div>
       <div className="splitGrid">
-        <Panel title="Study by label">
+        <Panel
+          title="Study by label"
+          action={
+            <select className="input" style={{ width: 'auto', padding: '4px 8px' }} value={labelFilter} onChange={(e) => setLabelFilter(e.target.value as any)}>
+              <option value="today">Today</option>
+              <option value="week">This Week</option>
+              <option value="month">This Month</option>
+              <option value="year">This Year</option>
+              <option value="all">All Time</option>
+            </select>
+          }
+        >
           <div className="breakdownList">
             {byLabel.length === 0 ? (
-              <p className="muted">No labelled study yet.</p>
+              <p className="muted">No labelled study in this period.</p>
             ) : (
               byLabel.map(([name, sec]) => (
                 <div className="breakdownRow" key={name}>
@@ -2586,3 +2631,146 @@ function useAmbientAudio(state: AppState | null) {
 }
 
 export default App;
+
+
+
+function TimetablePage({ state, actions }: { state: AppState; actions: AppActions }) {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleFileUpload = (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async (evt) => {
+      try {
+        const XLSX = await import('xlsx');
+        const bstr = evt.target?.result;
+        const wb = XLSX.read(bstr, { type: 'binary' });
+        const wsname = wb.SheetNames[0];
+        const ws = wb.Sheets[wsname];
+        const data = XLSX.utils.sheet_to_json(ws, { header: 1 }) as any[][];
+
+        const entries: import('./types').TimetableEntry[] = [];
+        const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+        let dayColIndices: Record<string, number> = {};
+
+        // Find header row
+        let headerRowIdx = -1;
+        for (let i = 0; i < Math.min(10, data.length); i++) {
+          if (data[i] && data[i].some((cell: any) => typeof cell === 'string' && cell.toLowerCase().includes('monday'))) {
+            headerRowIdx = i;
+            break;
+          }
+        }
+
+        if (headerRowIdx !== -1) {
+          const headerRow = data[headerRowIdx];
+          days.forEach(day => {
+            const idx = headerRow.findIndex((cell: any) => typeof cell === 'string' && cell.toLowerCase().includes(day.toLowerCase()));
+            if (idx !== -1) dayColIndices[day] = idx;
+          });
+
+          // Read data
+          for (let i = headerRowIdx + 1; i < data.length; i++) {
+            const row = data[i];
+            if (!row || row.length === 0) continue;
+
+            const timeHr = row[0]; // Assuming first column is time
+            if (!timeHr) continue;
+
+            days.forEach(day => {
+              const colIdx = dayColIndices[day];
+              if (colIdx !== undefined) {
+                const cell = row[colIdx];
+                if (cell && typeof cell === 'string' && cell.trim() !== '-' && cell.trim() !== '') {
+                  entries.push({
+                    id: Math.random().toString(36).substring(7),
+                    day,
+                    timeHr: String(timeHr).trim(),
+                    module: cell.trim()
+                  });
+                }
+              }
+            });
+          }
+        }
+
+        if (entries.length > 0) {
+          actions.setTimetable({ entries, updatedAt: new Date().toISOString() });
+          actions.notify('Timetable imported', `Imported ${entries.length} entries successfully.`, 'success');
+        } else {
+          actions.notify('Import failed', 'Could not find timetable data in the selected file.', 'danger');
+        }
+      } catch (err) {
+        console.error(err);
+        actions.notify('Import failed', 'Error reading the Excel file.', 'danger');
+      }
+    };
+    reader.readAsBinaryString(file);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+
+  return (
+    <section className="stack">
+      <Panel title="My Timetable">
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px' }}>
+          <p className="muted">Upload your Excel (.xlsx) timetable to view it here.</p>
+          <div>
+            <input
+              type="file"
+              accept=".xlsx,.xls"
+              ref={fileInputRef}
+              style={{ display: 'none' }}
+              onChange={handleFileUpload}
+            />
+            <button className="primaryButton" onClick={() => fileInputRef.current?.click()}>
+              Import Excel
+            </button>
+          </div>
+        </div>
+
+        {state.timetable?.entries && state.timetable.entries.length > 0 ? (
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+              <thead>
+                <tr style={{ borderBottom: '2px solid var(--line)' }}>
+                  <th style={{ padding: '8px', color: 'var(--muted)' }}>Time</th>
+                  {days.map(day => (
+                    <th key={day} style={{ padding: '8px', color: 'var(--muted)' }}>{day}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {/* Find all unique times and sort them simply based on appearance or just show uniquely */}
+                {Array.from(new Set(state.timetable.entries.map(e => e.timeHr))).map(time => (
+                  <tr key={time} style={{ borderBottom: '1px solid var(--line)' }}>
+                    <td style={{ padding: '8px', fontWeight: 'bold' }}>{time}</td>
+                    {days.map(day => {
+                      const entry = state.timetable!.entries.find(e => e.timeHr === time && e.day === day);
+                      return (
+                        <td key={day} style={{ padding: '8px', verticalAlign: 'top' }}>
+                          {entry ? (
+                            <div style={{ background: 'var(--surface-strong)', padding: '4px 8px', borderRadius: '4px', fontSize: '0.85em' }}>
+                              {entry.module}
+                            </div>
+                          ) : null}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div style={{ textAlign: 'center', padding: '40px', color: 'var(--muted)' }}>
+            No timetable data yet.
+          </div>
+        )}
+      </Panel>
+    </section>
+  );
+}
