@@ -35,6 +35,8 @@ export function createDefaultState(): AppState {
       aiTutor: {
         activeSubjectId: '',
       },
+      hiddenSidebarItems: [],
+      hideAiTutor: false,
     },
     labels: [],
     tasks: [],

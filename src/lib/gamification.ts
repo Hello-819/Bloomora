@@ -1,13 +1,13 @@
-import type { AppState, GamificationState, StudySession, StudyTask } from '../types';
-import { dateKey, startOfDayMs, startOfWeekMs } from './dates';
+import type { AppState, GamificationState, Label, StudySession, StudyTask } from '../types';
+import { dateKey, startOfDayMs, startOfWeekMs, startOfMonthMs, startOfYearMs } from './dates';
 
 export const ISLAND_LEVEL_SEC = 5 * 3600;
 export const TREE_STAGES = [
-  { id: 'seed', name: 'Seed', minSec: 0, asset: '/assets/images/v2/plant_seed.svg' },
-  { id: 'sprout', name: 'Sprout', minSec: 20 * 60, asset: '/assets/images/v2/plant_sprout.svg' },
-  { id: 'plant', name: 'Plant', minSec: 50 * 60, asset: '/assets/images/v2/plant_plant.svg' },
-  { id: 'sapling', name: 'Sapling', minSec: 90 * 60, asset: '/assets/images/v2/plant_sapling.svg' },
-  { id: 'tree', name: 'Tree', minSec: 2 * 3600, asset: '/assets/images/v2/plant_tree.svg' },
+  { id: 'seed', name: 'Seed', minSec: 0, asset: '/assets/images/v2/plant_seed.jpg' },
+  { id: 'sprout', name: 'Sprout', minSec: 20 * 60, asset: '/assets/images/v2/plant_sprout.jpg' },
+  { id: 'plant', name: 'Plant', minSec: 50 * 60, asset: '/assets/images/v2/plant_plant.jpg' },
+  { id: 'sapling', name: 'Sapling', minSec: 90 * 60, asset: '/assets/images/v2/plant_sapling.jpg' },
+  { id: 'tree', name: 'Tree', minSec: 2 * 3600, asset: '/assets/images/v2/plant_tree.jpg' },
 ] as const;
 export const FRUIT_RATE_SEC = 45 * 60;
 
@@ -59,6 +59,36 @@ export function computeFruitsReady(gamification: GamificationState): number {
 
 export function totalFruit(collection: Record<string, number>): number {
   return Object.values(collection).reduce((sum, value) => sum + (Number(value) || 0), 0);
+}
+
+export function studyByLabel(sessions: StudySession[], labels: Label[], timeframe: 'all' | 'year' | 'month' | 'week' | 'today', nowMs = Date.now()) {
+  const active = sessions.filter((session) => !session.deletedAt);
+  const startMs = (() => {
+    switch (timeframe) {
+      case 'today': return startOfDayMs(nowMs);
+      case 'week': return startOfWeekMs(nowMs);
+      case 'month': return startOfMonthMs(nowMs);
+      case 'year': return startOfYearMs(nowMs);
+      case 'all': return 0;
+    }
+  })();
+
+  const filtered = active.filter((session) => Date.parse(session.endAt) >= startMs);
+
+  const labelDurations: Record<string, number> = {};
+  let totalSec = 0;
+  filtered.forEach(session => {
+    const labelId = session.labelId || 'unlabeled';
+    labelDurations[labelId] = (labelDurations[labelId] || 0) + session.durationSec;
+    totalSec += session.durationSec;
+  });
+
+  const result = Object.entries(labelDurations).map(([id, duration]) => {
+    const label = id === 'unlabeled' ? { id: 'unlabeled', name: 'Unlabeled', color: '#6b7280' } : labels.find(l => l.id === id) || { id, name: 'Unknown', color: '#6b7280' };
+    return { ...label, duration };
+  }).sort((a, b) => b.duration - a.duration);
+
+  return { items: result, totalSec };
 }
 
 export function studyTotals(sessions: StudySession[], nowMs = Date.now()) {

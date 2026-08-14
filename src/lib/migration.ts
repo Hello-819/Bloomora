@@ -296,6 +296,8 @@ export function migrateV1State(raw: unknown): AppState {
       aiTutor: {
         activeSubjectId: migratedSubject?.id || '',
       },
+      hiddenSidebarItems: Array.isArray(asObject(source.profile).hiddenSidebarItems) ? asObject(source.profile).hiddenSidebarItems as string[] : [],
+      hideAiTutor: typeof asObject(source.profile).hideAiTutor === 'boolean' ? asObject(source.profile).hideAiTutor as boolean : false,
     },
     labels,
     tasks,

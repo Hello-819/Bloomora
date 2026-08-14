@@ -266,6 +266,7 @@ function useAppActions(
               ...current.profile.aiTutor,
               ...(patch.aiTutor || {}),
             },
+            hiddenSidebarItems: patch.hiddenSidebarItems || current.profile.hiddenSidebarItems || [],
           },
         });
       },
@@ -603,6 +604,9 @@ function useAppActions(
         }
         commit(next);
         notify('Session saved', 'Your Island and Garden both grew.', 'success');
+        if (next.sync.enabled) {
+          void this.syncNow();
+        }
         return true;
       },
 
@@ -610,7 +614,7 @@ function useAppActions(
         const current = requireState();
         const now = nowIso();
         const label = patch.labelId ? current.labels.find((item) => item.id === patch.labelId) : undefined;
-        commit({
+        const next = {
           ...current,
           sessions: current.sessions.map((session) =>
             session.id === id
@@ -623,20 +627,28 @@ function useAppActions(
                 }
               : session,
           ),
-        });
+        };
+        commit(next);
         notify('Session updated', 'The session details were saved.', 'success');
+        if (next.sync.enabled) {
+          void this.syncNow();
+        }
       },
 
       deleteSession(id) {
         const current = requireState();
         const now = nowIso();
-        commit({
+        const next = {
           ...current,
           sessions: current.sessions.map((session) =>
             session.id === id ? { ...session, deletedAt: now, updatedAt: now } : session,
           ),
-        });
+        };
+        commit(next);
         notify('Session archived', 'The session is hidden locally and marked for sync.', 'success');
+        if (next.sync.enabled) {
+          void this.syncNow();
+        }
       },
 
       restoreArchived(kind, id) {

@@ -85,6 +85,8 @@ describe('createDefaultState', () => {
         aiTutor: {
           activeSubjectId: '',
         },
+        hiddenSidebarItems: [],
+        hideAiTutor: false,
       },
       labels: [],
       tasks: [],
@@ -112,6 +114,7 @@ describe('createDefaultState', () => {
         enabled: false,
         status: 'offline',
       },
+      timetable: undefined,
     });
   });
 });

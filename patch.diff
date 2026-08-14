@@ -1,281 +1,33 @@
 <<<<<<< SEARCH
-  const merged: AppState = {
-    ...localWithLegacy,
-    ...mergedProfile,
-    labels: mergeRows(localWithLegacy.labels, remoteLabels),
-    tasks: mergeRows(localWithLegacy.tasks, remoteTasks),
-    notes: mergeRows(localWithLegacy.notes || [], remoteNotes),
-    subjects: mergeRows(localWithLegacy.subjects || [], remoteSubjects),
-    flashcards: mergeRows(localWithLegacy.flashcards || [], remoteFlashcards),
-    sessions: mergeRows(localWithLegacy.sessions, remoteSessions),
-    sync: {
-      enabled: true,
-      status: 'idle',
-      userEmail: user.email,
-      lastSyncAt: nowIso(),
-    },
-    updatedAt: nowIso(),
-  };
-
-  await Promise.all([
-    client.from(TABLES.profile).upsert(
-      {
-        id: user.id,
-        profile_data: merged.profile,
-        gamification_data: merged.gamification,
-        updated_at: merged.updatedAt,
-      },
-      { onConflict: 'id' },
-    ),
-    client.from(TABLES.labels).upsert(
-      merged.labels.map((label) => ({
-        user_id: user.id,
-        id: label.id,
-        name: label.name,
-        color: label.color,
-        favorite: label.favorite,
-        created_at: label.createdAt,
-        updated_at: label.updatedAt,
-        deleted_at: label.deletedAt ?? null,
-      })),
-      { onConflict: 'user_id,id' },
-    ),
-    client.from(TABLES.tasks).upsert(
-      merged.tasks.map((task) => ({
-        user_id: user.id,
-        id: task.id,
-        text: task.text,
-        notes: task.notes ?? null,
-        label_id: task.labelId ?? null,
-        done: task.done,
-        created_at: task.createdAt,
-        updated_at: task.updatedAt,
-        completed_at: task.completedAt ?? null,
-        deleted_at: task.deletedAt ?? null,
-      })),
-      { onConflict: 'user_id,id' },
-    ),
-    client.from(TABLES.notes).upsert(
-      merged.notes.map((note) => ({
-        user_id: user.id,
-        id: note.id,
-        title: note.title,
-        body: note.body,
-        label_id: note.labelId ?? null,
-        pinned: note.pinned,
-        created_at: note.createdAt,
-        updated_at: note.updatedAt,
-        deleted_at: note.deletedAt ?? null,
-      })),
-      { onConflict: 'user_id,id' },
-    ),
-    client.from(TABLES.subjects).upsert(
-      merged.subjects.map((subject) => ({
-        user_id: user.id,
-        id: subject.id,
-        name: subject.name,
-        qualification: subject.qualification,
-        exam_board: subject.examBoard,
-        target_grade: subject.targetGrade,
-        exam_date: subject.examDate,
-        created_at: subject.createdAt,
-        updated_at: subject.updatedAt,
-        deleted_at: subject.deletedAt ?? null,
-      })),
-      { onConflict: 'user_id,id' },
-    ),
-    client.from(TABLES.flashcards).upsert(
-      merged.flashcards.map((card) => ({
-        user_id: user.id,
-        id: card.id,
-        front: card.front,
-        back: card.back,
-        subject_id: card.subjectId ?? null,
-        label_id: card.labelId ?? null,
-        created_at: card.createdAt,
-        updated_at: card.updatedAt,
-        deleted_at: card.deletedAt ?? null,
-      })),
-      { onConflict: 'user_id,id' },
-    ),
-    client.from(TABLES.sessions).upsert(
-      merged.sessions.map((session) => ({
-        user_id: user.id,
-        id: session.id,
-        start_at: session.startAt,
-        end_at: session.endAt,
-        duration_sec: session.durationSec,
-        method: session.method,
-        reward_mode: session.rewardMode,
-        note: session.note ?? null,
-        label_id: session.labelId ?? null,
-        label_name_snapshot: session.labelNameSnapshot ?? null,
-        task_ids: session.taskIds,
-        created_at: session.createdAt,
-        updated_at: session.updatedAt,
-        deleted_at: session.deletedAt ?? null,
-      })),
-      { onConflict: 'user_id,id' },
-    ),
-  ]);
-
-  return merged;
-}
+export function studyTotals(sessions: StudySession[], nowMs = Date.now()) {
 =======
-  const merged: AppState = {
-    ...localWithLegacy,
-    ...mergedProfile,
-    labels: mergeRows(localWithLegacy.labels, remoteLabels),
-    tasks: mergeRows(localWithLegacy.tasks, remoteTasks),
-    notes: mergeRows(localWithLegacy.notes || [], remoteNotes),
-    subjects: mergeRows(localWithLegacy.subjects || [], remoteSubjects),
-    flashcards: mergeRows(localWithLegacy.flashcards || [], remoteFlashcards),
-    sessions: mergeRows(localWithLegacy.sessions, remoteSessions),
-    sync: {
-      enabled: true,
-      status: 'idle',
-      userEmail: user.email,
-      lastSyncAt: nowIso(),
-    },
-    updatedAt: nowIso(),
-  };
+export function studyByLabel(sessions: StudySession[], labels: Label[], nowMs = Date.now(), timeframe: 'all' | 'year' | 'month' | 'week' | 'today') {
+  const active = sessions.filter((session) => !session.deletedAt);
+  const startMs = (() => {
+    switch (timeframe) {
+      case 'today': return startOfDayMs(nowMs);
+      case 'week': return startOfWeekMs(nowMs);
+      case 'month': return startOfMonthMs(nowMs);
+      case 'year': return startOfYearMs(nowMs);
+      case 'all': return 0;
+    }
+  })();
 
-  await Promise.all([
-    upsertProfile(client, user.id, merged),
-    upsertLabels(client, user.id, merged.labels),
-    upsertTasks(client, user.id, merged.tasks),
-    upsertNotes(client, user.id, merged.notes),
-    upsertSubjects(client, user.id, merged.subjects),
-    upsertFlashcards(client, user.id, merged.flashcards),
-    upsertSessions(client, user.id, merged.sessions),
-  ]);
+  const filtered = active.filter((session) => Date.parse(session.endAt) >= startMs);
 
-  return merged;
+  const labelDurations: Record<string, number> = {};
+  filtered.forEach(session => {
+    const labelId = session.labelId || 'unlabeled';
+    labelDurations[labelId] = (labelDurations[labelId] || 0) + session.durationSec;
+  });
+
+  const result = Object.entries(labelDurations).map(([id, duration]) => {
+    const label = id === 'unlabeled' ? { id: 'unlabeled', name: 'Unlabeled', color: '#6b7280' } : labels.find(l => l.id === id) || { id, name: 'Unknown', color: '#6b7280' };
+    return { ...label, duration };
+  }).sort((a, b) => b.duration - a.duration);
+
+  return result;
 }
 
-async function upsertProfile(client: SupabaseClient, userId: string, state: AppState) {
-  return client.from(TABLES.profile).upsert(
-    {
-      id: userId,
-      profile_data: state.profile,
-      gamification_data: state.gamification,
-      updated_at: state.updatedAt,
-    },
-    { onConflict: 'id' },
-  );
-}
-
-async function upsertLabels(client: SupabaseClient, userId: string, labels: Label[]) {
-  if (!labels.length) return;
-  return client.from(TABLES.labels).upsert(
-    labels.map((label) => ({
-      user_id: userId,
-      id: label.id,
-      name: label.name,
-      color: label.color,
-      favorite: label.favorite,
-      created_at: label.createdAt,
-      updated_at: label.updatedAt,
-      deleted_at: label.deletedAt ?? null,
-    })),
-    { onConflict: 'user_id,id' },
-  );
-}
-
-async function upsertTasks(client: SupabaseClient, userId: string, tasks: StudyTask[]) {
-  if (!tasks.length) return;
-  return client.from(TABLES.tasks).upsert(
-    tasks.map((task) => ({
-      user_id: userId,
-      id: task.id,
-      text: task.text,
-      notes: task.notes ?? null,
-      label_id: task.labelId ?? null,
-      done: task.done,
-      created_at: task.createdAt,
-      updated_at: task.updatedAt,
-      completed_at: task.completedAt ?? null,
-      deleted_at: task.deletedAt ?? null,
-    })),
-    { onConflict: 'user_id,id' },
-  );
-}
-
-async function upsertNotes(client: SupabaseClient, userId: string, notes: StudyNote[]) {
-  if (!notes.length) return;
-  return client.from(TABLES.notes).upsert(
-    notes.map((note) => ({
-      user_id: userId,
-      id: note.id,
-      title: note.title,
-      body: note.body,
-      label_id: note.labelId ?? null,
-      pinned: note.pinned,
-      created_at: note.createdAt,
-      updated_at: note.updatedAt,
-      deleted_at: note.deletedAt ?? null,
-    })),
-    { onConflict: 'user_id,id' },
-  );
-}
-
-async function upsertSubjects(client: SupabaseClient, userId: string, subjects: StudySubject[]) {
-  if (!subjects.length) return;
-  return client.from(TABLES.subjects).upsert(
-    subjects.map((subject) => ({
-      user_id: userId,
-      id: subject.id,
-      name: subject.name,
-      qualification: subject.qualification,
-      exam_board: subject.examBoard,
-      target_grade: subject.targetGrade,
-      exam_date: subject.examDate,
-      created_at: subject.createdAt,
-      updated_at: subject.updatedAt,
-      deleted_at: subject.deletedAt ?? null,
-    })),
-    { onConflict: 'user_id,id' },
-  );
-}
-
-async function upsertFlashcards(client: SupabaseClient, userId: string, flashcards: Flashcard[]) {
-  if (!flashcards.length) return;
-  return client.from(TABLES.flashcards).upsert(
-    flashcards.map((card) => ({
-      user_id: userId,
-      id: card.id,
-      front: card.front,
-      back: card.back,
-      subject_id: card.subjectId ?? null,
-      label_id: card.labelId ?? null,
-      created_at: card.createdAt,
-      updated_at: card.updatedAt,
-      deleted_at: card.deletedAt ?? null,
-    })),
-    { onConflict: 'user_id,id' },
-  );
-}
-
-async function upsertSessions(client: SupabaseClient, userId: string, sessions: StudySession[]) {
-  if (!sessions.length) return;
-  return client.from(TABLES.sessions).upsert(
-    sessions.map((session) => ({
-      user_id: userId,
-      id: session.id,
-      start_at: session.startAt,
-      end_at: session.endAt,
-      duration_sec: session.durationSec,
-      method: session.method,
-      reward_mode: session.rewardMode,
-      note: session.note ?? null,
-      label_id: session.labelId ?? null,
-      label_name_snapshot: session.labelNameSnapshot ?? null,
-      task_ids: session.taskIds,
-      created_at: session.createdAt,
-      updated_at: session.updatedAt,
-      deleted_at: session.deletedAt ?? null,
-    })),
-    { onConflict: 'user_id,id' },
-  );
-}
+export function studyTotals(sessions: StudySession[], nowMs = Date.now()) {
 >>>>>>> REPLACE

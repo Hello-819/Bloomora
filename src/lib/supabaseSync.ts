@@ -444,6 +444,12 @@ function mergeProfile(local: AppState, remoteProfile: RemoteProfile | null): Pic
         ...local.profile.aiTutor,
         ...(remoteProfile.profile_data?.aiTutor || {}),
       },
+      hiddenSidebarItems: Array.isArray(remoteProfile.profile_data?.hiddenSidebarItems)
+        ? remoteProfile.profile_data.hiddenSidebarItems
+        : local.profile.hiddenSidebarItems,
+      hideAiTutor: typeof remoteProfile.profile_data?.hideAiTutor === 'boolean'
+        ? remoteProfile.profile_data.hideAiTutor
+        : local.profile.hideAiTutor,
     },
     gamification: {
       ...defaults.gamification,
