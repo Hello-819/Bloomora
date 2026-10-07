@@ -1,4 +1,8 @@
+import { nativeSaveFile } from './native';
+
+/** Downloads a text file in the browser, or opens the "Save as" picker in the Android app. */
 export function downloadText(filename: string, text: string, type = 'text/markdown') {
+  if (nativeSaveFile(filename, type, text)) return;
   const blob = new Blob([text], { type });
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import type { IconName } from './components/Icon';
 
 export type Page =
@@ -85,10 +85,10 @@ export function useRoute(): [Route, Navigate] {
     window.addEventListener('hashchange', onHash);
     return () => window.removeEventListener('hashchange', onHash);
   }, []);
-  const navigate: Navigate = (page, sub = '') => {
+  const navigate = useCallback<Navigate>((page, sub = '') => {
     const next = sub ? `/${page}/${encodeURIComponent(sub)}` : `/${page}`;
     if (window.location.hash !== `#${next}`) window.location.hash = next;
     setRoute({ page, sub });
-  };
+  }, []);
   return [route, navigate];
 }

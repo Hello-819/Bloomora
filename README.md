@@ -2,7 +2,7 @@
 
 Bloomora is a study planner and tracker for sixth form, college and university students. It works offline in your browser, with optional account sync across devices.
 
-You can access it at: **[https://bloomora.pages.dev](https://bloomora.pages.dev)**
+You can access it at: **[https://bloomora.pages.dev](https://bloomora.pages.dev)**, or install the Android app (see [android-native/README.md](android-native/README.md)).
 
 ## Features
 
@@ -20,6 +20,7 @@ You can access it at: **[https://bloomora.pages.dev](https://bloomora.pages.dev)
 - **Profile and account**: A profile menu in the top right with an uploadable avatar, plus sign in, sync, theme and settings. Sign-in forms only appear in a dialog when you ask for one.
 - **Search**: Press <kbd>Ctrl</kbd>/<kbd>⌘</kbd> + <kbd>K</kbd> to jump to any page, note, task, deadline or flashcard.
 - **Appearance**: Light and dark modes, four accent colours, an optional background image and a compact sidebar. Pages you don't use can be hidden.
+- **Android app**: Timer alerts, deadline reminders, keep-screen-on during sessions, back-button support and native file saving.
 - **Data**: Everything is stored locally first. You can export and restore JSON backups, and sync through Supabase is optional.
 
 ## Screenshots
@@ -65,6 +66,7 @@ npm run dev        # http://127.0.0.1:5173
 npm test           # unit tests (Vitest)
 npm run test:e2e   # browser tests (Playwright)
 npm run build
+./android-native/build.sh   # Android APK
 ```
 
 Optional environment variables (see `.env.example`):

@@ -1,0 +1,9 @@
+<resources>
+    <style name="Theme.Bloomora" parent="@android:style/Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@color/bloomora_bg</item>
+        <item name="android:statusBarColor">@color/bloomora_bg</item>
+        <item name="android:navigationBarColor">@color/bloomora_bg</item>
+        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:colorAccent">@color/bloomora_indigo</item>
+    </style>
+</resources>

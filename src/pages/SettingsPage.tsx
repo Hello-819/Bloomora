@@ -1,4 +1,4 @@
-import { useState, type ChangeEvent } from 'react';
+import { useEffect, useState, type ChangeEvent } from 'react';
 import type { AmbientType, EducationLevel, ThemeName } from '../types';
 import type { PageProps } from '../components/study';
 import { Avatar, Field, PageHeader, Panel, Segmented, Toggle } from '../components/ui';
@@ -9,6 +9,7 @@ import { avatarFromFile } from '../lib/files';
 import { createExportPayload, downloadJson, validateImportText, type ImportPreview } from '../lib/exportImport';
 import { formatDateTime, formatDuration } from '../lib/format';
 import { dateKey } from '../lib/dates';
+import { isNativeApp, nativeInfo, openNativeExactAlarmSettings, requestNativeNotificationPermission } from '../lib/native';
 
 type Tab = 'profile' | 'account' | 'general' | 'study' | 'navigation' | 'data';
 
@@ -224,12 +225,51 @@ function AppearanceTab({ state, actions }: PageProps) {
   );
 }
 
-function StudyTab({ state, actions }: PageProps) {
+function NotificationsPanel({ state, actions }: PageProps) {
+  const [info, setInfo] = useState(nativeInfo);
+  useEffect(() => {
+    const refresh = () => setInfo(nativeInfo());
+    window.addEventListener('bloomora:resume', refresh);
+    const id = window.setInterval(refresh, 3000);
+    return () => {
+      window.removeEventListener('bloomora:resume', refresh);
+      window.clearInterval(id);
+    };
+  }, []);
+  const profile = state.profile;
+  return (
+    <Panel title="Notifications" description="Reminders are scheduled on this phone and work even when Bloomora is closed.">
+      {info && !info.notificationsAllowed && (
+        <div className="callout callout-warning">
+          <Icon name="alert" />
+          <div>
+            <strong>Notifications are turned off for Bloomora</strong>
+            <p>Allow notifications so timer alerts and deadline reminders can reach you.</p>
+            <div className="buttonRow"><button className="primaryButton small" onClick={requestNativeNotificationPermission}>Allow notifications</button></div>
+          </div>
+        </div>
+      )}
+      <Toggle checked={profile.notifyTimer !== false} onChange={(checked) => actions.updateProfile({ notifyTimer: checked })} label="Timer alerts" description="Notify when a focus round, break or countdown ends." />
+      <Toggle checked={profile.notifyDeadlines !== false} onChange={(checked) => actions.updateProfile({ notifyDeadlines: checked })} label="Deadline reminders" description="The evening before and on the day something is due." />
+      <Toggle checked={profile.keepScreenOn !== false} onChange={(checked) => actions.updateProfile({ keepScreenOn: checked })} label="Keep screen on during sessions" description="Stops the phone sleeping while a timer is running." />
+      {info && !info.exactAlarms && (
+        <div className="settingsRow">
+          <div><strong>Precise timing</strong><p>Android may deliver alerts a few minutes late unless Bloomora is allowed to set alarms.</p></div>
+          <button className="secondaryButton" onClick={openNativeExactAlarmSettings}>Allow alarms</button>
+        </div>
+      )}
+    </Panel>
+  );
+}
+
+function StudyTab(props: PageProps) {
+  const { state, actions } = props;
   const profile = state.profile;
   const pomodoro = profile.pomodoro;
   const num = (value: string, min: number, max: number) => Math.min(max, Math.max(min, Number(value) || min));
   return (
     <>
+      {isNativeApp() && <NotificationsPanel {...props} />}
       <Panel title="Goals" description="Used for progress bars on the overview and the goal line on charts.">
         <div className="formGrid">
           <Field label="Daily goal (minutes)">

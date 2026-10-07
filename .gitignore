@@ -8,3 +8,7 @@ tsconfig.tsbuildinfo
 .env
 .env.local
 .DS_Store
+
+# Android build
+android-native/build/
+android-native/.tools/

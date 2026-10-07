@@ -80,6 +80,7 @@ body[data-mode="dark"][data-theme="ink"] { --accent: #cbd5e1; --accent-hover: #e
 *, *::before, *::after { box-sizing: border-box; }
 
 html, body, #root { min-height: 100%; }
+html { -webkit-tap-highlight-color: transparent; }
 
 body {
   margin: 0;
@@ -429,6 +430,7 @@ body[data-custom-bg="on"] .sidebar { background: color-mix(in srgb, var(--surfac
   align-items: center;
   gap: 9px;
   width: min(380px, 100%);
+  min-width: 0;
   height: 36px;
   padding: 0 8px 0 12px;
   border-radius: var(--radius-sm);
@@ -881,6 +883,15 @@ body[data-custom-bg="on"] .sidebar { background: color-mix(in srgb, var(--surfac
 .themeSwatch span { width: 16px; height: 16px; border-radius: 50%; }
 .themeSwatchActive { border-color: var(--text); color: var(--text); box-shadow: 0 0 0 1px var(--text); }
 
+/* Bottom tab bar (phones) */
+.mobileTabs { display: none; }
+.mobileTab { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; border: 0; background: none; color: var(--muted); font-size: 11px; font-weight: 600; padding: 6px 0; }
+.mobileTab .icon { color: inherit; }
+.mobileTabActive { color: var(--accent-text); }
+.nativeApp { user-select: none; -webkit-user-select: none; }
+.nativeApp :is(input, textarea, [contenteditable], .markdownBody, .chatMessage, .noteCardBody, .reviewCard) { user-select: text; -webkit-user-select: text; }
+.panel > .callout + .toggleRow { margin-top: 12px; }
+
 /* ==========================================================================
    Responsive
    ========================================================================== */
@@ -911,6 +922,7 @@ body[data-custom-bg="on"] .sidebar { background: color-mix(in srgb, var(--surfac
   .mobileMenuButton { display: inline-grid; }
   .topBar { padding: 0 12px; gap: 8px; }
   .searchTrigger { width: auto; flex: 1; }
+  .topActions { flex-shrink: 0; gap: 2px; }
   .searchTrigger kbd { display: none; }
   .topFocusButton span, .timerChipLabel { display: none; }
   .content { padding: 20px 16px 48px; }
@@ -918,7 +930,24 @@ body[data-custom-bg="on"] .sidebar { background: color-mix(in srgb, var(--surfac
   .settingsNav { position: static; flex-direction: row; overflow-x: auto; padding-bottom: 4px; }
   .musicDock { left: 16px; }
   .noteEditorBody.view-split { grid-template-columns: minmax(0, 1fr); }
-  .assistantPage { height: calc(100vh - var(--topbar-h) - 68px); }
+  .assistantPage { height: calc(100vh - var(--topbar-h) - 68px - 60px); }
+  .mobileTabs {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 25;
+    height: 60px;
+    background: color-mix(in srgb, var(--surface) 94%, transparent);
+    backdrop-filter: blur(14px);
+    border-top: 1px solid var(--line);
+  }
+  .content { padding-bottom: 92px; }
+  .toastStack { bottom: 76px; }
+  .musicDock { bottom: 76px; }
+  body { overscroll-behavior-y: none; }
 }
 
 @media (max-width: 640px) {

@@ -1,5 +1,6 @@
 import type { AppState } from '../types';
 import { normalizeImportedState } from './migration';
+import { downloadText } from './files';
 
 export interface ImportPreview {
   state: AppState;
@@ -28,13 +29,7 @@ export function createExportPayload(state: AppState): string {
 }
 
 export function downloadJson(filename: string, payload: string): void {
-  const blob = new Blob([payload], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = filename;
-  link.click();
-  URL.revokeObjectURL(url);
+  downloadText(filename, payload, 'application/json');
 }
 
 export function validateImportText(text: string): ImportPreview | { error: string } {

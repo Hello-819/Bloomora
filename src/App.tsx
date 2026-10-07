@@ -6,6 +6,9 @@ import { Sidebar } from './components/Sidebar';
 import { TopBar } from './components/TopBar';
 import { AuthDialog, type AuthMode } from './components/AuthDialog';
 import { CommandPalette } from './components/CommandPalette';
+import { MobileTabs } from './components/MobileTabs';
+import { useNativeApp } from './lib/useNativeApp';
+import { isNativeApp } from './lib/native';
 import { Icon } from './components/Icon';
 import type { PageProps } from './components/study';
 import { elapsedForTimer, remainingForTimer } from './lib/timers';
@@ -133,6 +136,40 @@ function App() {
   useDocumentChrome(state, route.page);
   useAmbientAudio(state);
 
+  // Android back button: close the top-most overlay, then step back towards the overview.
+  const handleBack = useCallback(() => {
+    if (paletteOpen) {
+      setPaletteOpen(false);
+      return true;
+    }
+    if (authMode) {
+      setAuthMode(null);
+      return true;
+    }
+    if (document.querySelector('.modalBackdrop, .popover')) {
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+      return true;
+    }
+    if (mobileNav) {
+      setMobileNav(false);
+      return true;
+    }
+    if (musicOpen) {
+      setMusicOpen(false);
+      return true;
+    }
+    if (route.sub) {
+      navigate(route.page);
+      return true;
+    }
+    if (route.page !== 'dashboard') {
+      navigate('dashboard');
+      return true;
+    }
+    return false;
+  }, [authMode, mobileNav, musicOpen, navigate, paletteOpen, route.page, route.sub]);
+  useNativeApp(state, handleBack);
+
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
@@ -163,7 +200,7 @@ function App() {
   const PageView = PAGES[route.page];
 
   return (
-    <div className={state.profile.sidebarCollapsed ? 'appShell appShellCollapsed' : 'appShell'}>
+    <div className={['appShell', state.profile.sidebarCollapsed ? 'appShellCollapsed' : '', isNativeApp() ? 'nativeApp' : ''].join(' ')}>
       <Sidebar
         page={route.page}
         navigate={navigate}
@@ -188,6 +225,7 @@ function App() {
           <PageView state={state} actions={actions} navigate={navigate} sub={route.sub} syncConfigured={syncConfigured} openAuth={setAuthMode} />
         </main>
       </div>
+      <MobileTabs page={route.page} navigate={navigate} onMore={() => setMobileNav(true)} />
       <MusicDock state={state} open={musicOpen} onClose={() => setMusicOpen(false)} />
       {paletteOpen && <CommandPalette state={state} actions={actions} navigate={navigate} onClose={closePalette} />}
       {authMode && <AuthDialog initialMode={authMode} syncConfigured={syncConfigured} actions={actions} onClose={closeAuth} />}

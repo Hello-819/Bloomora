@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <g transform="translate(512 512) scale(1.1186) translate(-512 -512)"><defs><mask id="m"><rect width="1024" height="1024" fill="#fff"/><circle cx="512" cy="512" r="68.4" fill="#000"/></mask></defs>
+  <g fill="#ffffff" mask="url(#m)"><ellipse cx="512.00" cy="372.76" rx="82.6" ry="132.2" transform="rotate(0.00 512.00 372.76)"/><ellipse cx="644.43" cy="468.97" rx="82.6" ry="132.2" transform="rotate(72.00 644.43 468.97)"/><ellipse cx="593.84" cy="624.65" rx="82.6" ry="132.2" transform="rotate(144.00 593.84 624.65)"/><ellipse cx="430.16" cy="624.65" rx="82.6" ry="132.2" transform="rotate(216.00 430.16 624.65)"/><ellipse cx="379.57" cy="468.97" rx="82.6" ry="132.2" transform="rotate(288.00 379.57 468.97)"/></g>
+  <circle cx="512" cy="512" r="42.5" fill="#ffffff"/>
+</g>
+</svg>

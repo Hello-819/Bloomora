@@ -158,6 +158,12 @@ export interface ProfileSettings {
   hiddenSidebarItems: string[];
   hideAiTutor?: boolean;
   sidebarCollapsed?: boolean;
+  /** Android app only: notify before deadlines are due. Defaults to on. */
+  notifyDeadlines?: boolean;
+  /** Android app only: notify when a timed focus round or break ends. Defaults to on. */
+  notifyTimer?: boolean;
+  /** Android app only: keep the screen awake while a timer is running. Defaults to on. */
+  keepScreenOn?: boolean;
 }
 
 export interface RewardLogItem {
