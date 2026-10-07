@@ -9,6 +9,11 @@ export function createDefaultState(): AppState {
     updatedAt: now,
     profile: {
       displayName: 'Student',
+      avatarImage: undefined,
+      educationLevel: 'sixth-form',
+      institution: '',
+      course: '',
+      yearOfStudy: '',
       weeklyGoalHours: 10,
       dailyGoalMinutes: 60,
       theme: 'daybreak',
@@ -37,6 +42,7 @@ export function createDefaultState(): AppState {
       },
       hiddenSidebarItems: [],
       hideAiTutor: false,
+      sidebarCollapsed: false,
     },
     labels: [],
     tasks: [],
@@ -44,6 +50,8 @@ export function createDefaultState(): AppState {
     subjects: [],
     flashcards: [],
     sessions: [],
+    deadlines: [],
+    assessments: [],
     gamification: {
       islandXpSec: 0,
       gardenGrowthSec: 0,

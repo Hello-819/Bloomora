@@ -67,3 +67,36 @@ describe('v1 migration', () => {
     expect(migrated.gamification.fruitCollection.Cherry).toBe(5);
   });
 });
+
+describe('normalizing newer V2 fields', () => {
+  it('keeps deadlines, results, flashcard reviews and profile details from a backup', async () => {
+    const { createDefaultState } = await import('./defaultState');
+    const { normalizeImportedState } = await import('./migration');
+    const base = createDefaultState();
+    const normalized = normalizeImportedState({
+      ...base,
+      profile: { ...base.profile, educationLevel: 'university', institution: 'UCL', avatarImage: 'javascript:alert(1)' },
+      flashcards: [{ id: 'c1', front: 'Q', back: 'A', createdAt: base.createdAt, updatedAt: base.updatedAt, review: { dueAt: '2026-05-01T00:00:00.000Z', intervalDays: 3, ease: 2.5, reps: 2, lapses: 0 } }],
+      deadlines: [{ id: 'd1', title: 'Essay', kind: 'coursework', dueAt: '2026-05-10', status: 'bogus', createdAt: base.createdAt, updatedAt: base.updatedAt }],
+      assessments: [{ id: 'a1', title: 'Mock', score: 45, maxScore: 60, date: '2026-03-01', createdAt: base.createdAt, updatedAt: base.updatedAt }],
+    });
+    expect(normalized?.profile.educationLevel).toBe('university');
+    expect(normalized?.profile.institution).toBe('UCL');
+    expect(normalized?.profile.avatarImage).toBeUndefined();
+    expect(normalized?.flashcards[0].review?.intervalDays).toBe(3);
+    expect(normalized?.deadlines[0]).toMatchObject({ kind: 'coursework', status: 'not-started' });
+    expect(normalized?.assessments[0]).toMatchObject({ score: 45, maxScore: 60 });
+  });
+
+  it('fills in new fields for backups made before they existed', async () => {
+    const { createDefaultState } = await import('./defaultState');
+    const { normalizeImportedState } = await import('./migration');
+    const legacy = createDefaultState() as unknown as Record<string, unknown>;
+    delete legacy.deadlines;
+    delete legacy.assessments;
+    const normalized = normalizeImportedState(legacy);
+    expect(normalized?.deadlines).toEqual([]);
+    expect(normalized?.assessments).toEqual([]);
+    expect(normalized?.profile.educationLevel).toBe('sixth-form');
+  });
+});

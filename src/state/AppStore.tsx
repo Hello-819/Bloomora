@@ -14,10 +14,12 @@ import {
 import type {
   ActiveTimer,
   AppState,
+  Assessment,
   ColorMode,
+  Deadline,
   Flashcard,
   Label,
-  RewardLogItem,
+  ReviewGrade,
   RewardMode,
   SessionDraft,
   StudyMethod,
@@ -28,11 +30,12 @@ import type {
   ThemeName,
   TimerLabeling,
   TimerMode,
+  TimetableEntry,
 } from '../types';
 import { clearAppState, loadAppState, saveAppState } from '../lib/storage';
 import { createId } from '../lib/id';
 import { nowIso } from '../lib/dates';
-import { computeFruitsReady, earnedAchievementIds, ACHIEVEMENTS } from '../lib/gamification';
+import { scheduleReview } from '../lib/srs';
 import { elapsedForTimer, pauseTimerSnapshot, resumeTimerSnapshot } from '../lib/timers';
 import {
   getCurrentUser,
@@ -46,7 +49,7 @@ import {
 } from '../lib/supabaseSync';
 
 type ToastKind = 'info' | 'success' | 'warning' | 'danger';
-type ArchiveKind = 'label' | 'task' | 'note' | 'subject' | 'flashcard' | 'session';
+export type ArchiveKind = 'label' | 'task' | 'note' | 'subject' | 'flashcard' | 'session' | 'deadline' | 'assessment';
 
 const ARCHIVE_TABLES: Record<ArchiveKind, string> = {
   label: 'bloomora_labels',
@@ -55,7 +58,24 @@ const ARCHIVE_TABLES: Record<ArchiveKind, string> = {
   subject: 'bloomora_subjects',
   flashcard: 'bloomora_flashcards',
   session: 'bloomora_sessions',
+  deadline: 'bloomora_deadlines',
+  assessment: 'bloomora_assessments',
 };
+
+const ARCHIVE_COLLECTIONS = {
+  label: 'labels',
+  task: 'tasks',
+  note: 'notes',
+  subject: 'subjects',
+  flashcard: 'flashcards',
+  session: 'sessions',
+  deadline: 'deadlines',
+  assessment: 'assessments',
+} as const satisfies Record<ArchiveKind, keyof AppState>;
+
+export type DeadlineDraft = Omit<Deadline, 'id' | 'createdAt' | 'updatedAt' | 'deletedAt'>;
+export type AssessmentDraft = Omit<Assessment, 'id' | 'createdAt' | 'updatedAt' | 'deletedAt'>;
+export type TaskPatch = Partial<Pick<StudyTask, 'text' | 'notes' | 'labelId' | 'dueDate' | 'priority'>>;
 
 export interface ToastMessage {
   id: string;
@@ -82,7 +102,8 @@ export interface AppActions {
   createLabel(name: string, color: string): void;
   toggleLabelFavorite(id: string): void;
   deleteLabel(id: string): void;
-  addTask(text: string, notes?: string, labelId?: string): void;
+  addTask(text: string, notes?: string, labelId?: string, extra?: Pick<StudyTask, 'dueDate' | 'priority'>): void;
+  updateTask(id: string, patch: TaskPatch): void;
   toggleTask(id: string, done: boolean): void;
   deleteTask(id: string): void;
   clearDoneTasks(): void;
@@ -93,7 +114,14 @@ export interface AppActions {
   createFlashcards(cards: Array<Pick<Flashcard, 'front' | 'back'> & Partial<Pick<Flashcard, 'subjectId' | 'labelId'>>>): void;
   updateFlashcard(id: string, patch: Partial<Pick<Flashcard, 'front' | 'back' | 'subjectId' | 'labelId'>>): void;
   deleteFlashcard(id: string): void;
-  addSession(draft: SessionDraft): boolean;
+  reviewFlashcard(id: string, grade: ReviewGrade): void;
+  resetFlashcardProgress(id: string): void;
+  createDeadline(draft: DeadlineDraft): void;
+  updateDeadline(id: string, patch: Partial<DeadlineDraft>): void;
+  deleteDeadline(id: string): void;
+  createAssessment(draft: AssessmentDraft): void;
+  updateAssessment(id: string, patch: Partial<AssessmentDraft>): void;
+  deleteAssessment(id: string): void;  addSession(draft: SessionDraft): boolean;
   updateSession(id: string, patch: Partial<Pick<StudySession, 'labelId' | 'note'>>): void;
   deleteSession(id: string): void;
   restoreArchived(kind: ArchiveKind, id: string): void;
@@ -104,9 +132,7 @@ export interface AppActions {
   resumeTimer(): void;
   resetTimer(): void;
   completePomodoroPhase(): void;
-  saveActiveTimer(): boolean;
-  harvestFruits(): void;
-  restartGarden(treeType: string): void;
+  saveActiveTimer(note?: string): boolean;
   replaceState(next: AppState): void;
   resetAll(): Promise<void>;
   syncNow(): Promise<void>;
@@ -117,6 +143,8 @@ export interface AppActions {
   dismissToast(id: string): void;
   notify(title: string, detail?: string, kind?: ToastKind): void;
   setTimetable(timetable: AppState['timetable']): void;
+  addTimetableEntry(entry: Omit<TimetableEntry, 'id'>): void;
+  removeTimetableEntry(id: string): void;
 }
 
 export interface AppStoreValue {
@@ -141,49 +169,12 @@ function bumpState(state: AppState): AppState {
   return { ...state, updatedAt: nowIso() };
 }
 
-function appendRewardLog(state: AppState, item: Omit<RewardLogItem, 'id' | 'createdAt'>): AppState {
-  return {
-    ...state,
-    gamification: {
-      ...state.gamification,
-      rewardLog: [
-        { id: createId('reward'), createdAt: nowIso(), ...item },
-        ...state.gamification.rewardLog,
-      ].slice(0, 40),
-    },
-  };
-}
-
 function restoreRow<T extends { id: string; deletedAt?: string; updatedAt: string }>(rows: T[], id: string, now: string): T[] {
   return rows.map((row) => (row.id === id ? { ...row, deletedAt: undefined, updatedAt: now } : row));
 }
 
 function purgeRow<T extends { id: string }>(rows: T[], id: string): T[] {
   return rows.filter((row) => row.id !== id);
-}
-
-function refreshAchievements(state: AppState): AppState {
-  const before = new Set(state.gamification.achievementIds);
-  const after = earnedAchievementIds(state);
-  const newlyEarned = after.filter((id) => !before.has(id));
-  let next: AppState = {
-    ...state,
-    gamification: {
-      ...state.gamification,
-      achievementIds: after,
-    },
-  };
-  for (const id of newlyEarned) {
-    const achievement = ACHIEVEMENTS.find((item) => item.id === id);
-    if (achievement) {
-      next = appendRewardLog(next, {
-        title: achievement.title,
-        detail: achievement.detail,
-        kind: 'achievement',
-      });
-    }
-  }
-  return next;
 }
 
 function appendSession(state: AppState, draft: SessionDraft): AppState | null {
@@ -210,22 +201,37 @@ function appendSession(state: AppState, draft: SessionDraft): AppState | null {
     updatedAt: now,
   };
 
-  let next: AppState = {
-    ...state,
-    sessions: [session, ...state.sessions],
-    gamification: {
-      ...state.gamification,
-      islandXpSec: state.gamification.islandXpSec + durationSec,
-      gardenGrowthSec: state.gamification.gardenGrowthSec + durationSec,
-    },
-  };
+  return { ...state, sessions: [session, ...state.sessions] };
+}
 
-  next = appendRewardLog(next, {
-    title: 'Study saved',
-    detail: `${Math.round(durationSec / 60)} minutes added to Island and Garden progress.`,
-    kind: 'session',
-  });
-  return refreshAchievements(next);
+function cleanDeadline(draft: Partial<DeadlineDraft>, base?: Deadline): Omit<Deadline, 'id' | 'createdAt' | 'updatedAt'> {
+  const merged = { ...base, ...draft };
+  const weight = Number(merged.weight);
+  return {
+    title: (merged.title ?? '').trim().slice(0, 120) || 'Untitled deadline',
+    kind: merged.kind ?? 'assignment',
+    subjectId: merged.subjectId || undefined,
+    dueAt: (merged.dueAt ?? '').slice(0, 32),
+    weight: merged.weight == null || merged.weight === ('' as unknown) || !Number.isFinite(weight) ? undefined : Math.min(100, Math.max(0, weight)),
+    status: merged.status ?? 'not-started',
+    notes: merged.notes?.trim().slice(0, 1000) || undefined,
+    deletedAt: base?.deletedAt,
+  };
+}
+
+function cleanAssessment(draft: Partial<AssessmentDraft>, base?: Assessment): Omit<Assessment, 'id' | 'createdAt' | 'updatedAt'> {
+  const merged = { ...base, ...draft };
+  const weight = Number(merged.weight);
+  return {
+    title: (merged.title ?? '').trim().slice(0, 120) || 'Assessment',
+    subjectId: merged.subjectId || undefined,
+    score: Math.max(0, Number(merged.score) || 0),
+    maxScore: Math.max(0, Number(merged.maxScore) || 0),
+    weight: merged.weight == null || merged.weight === ('' as unknown) || !Number.isFinite(weight) ? undefined : Math.min(100, Math.max(0, weight)),
+    date: (merged.date ?? '').slice(0, 32),
+    notes: merged.notes?.trim().slice(0, 1000) || undefined,
+    deletedAt: base?.deletedAt,
+  };
 }
 
 
@@ -411,7 +417,7 @@ function useAppActions(
         notify('Label archived', 'Old sessions keep their label snapshot.', 'success');
       },
 
-      addTask(text, notes = '', labelId) {
+      addTask(text, notes = '', labelId, extra) {
         const current = requireState();
         const clean = text.trim();
         if (!clean) return;
@@ -421,6 +427,8 @@ function useAppActions(
           text: clean.slice(0, 120),
           notes: notes.trim().slice(0, 280),
           labelId: labelId || undefined,
+          dueDate: extra?.dueDate || undefined,
+          priority: extra?.priority || undefined,
           done: false,
           createdAt: now,
           updatedAt: now,
@@ -428,10 +436,31 @@ function useAppActions(
         commit({ ...current, tasks: [task, ...current.tasks] });
       },
 
+      updateTask(id, patch) {
+        const current = requireState();
+        const now = nowIso();
+        commit({
+          ...current,
+          tasks: current.tasks.map((task) =>
+            task.id === id
+              ? {
+                  ...task,
+                  text: patch.text == null ? task.text : patch.text.trim().slice(0, 120) || task.text,
+                  notes: patch.notes == null ? task.notes : patch.notes.trim().slice(0, 280),
+                  labelId: 'labelId' in patch ? patch.labelId || undefined : task.labelId,
+                  dueDate: 'dueDate' in patch ? patch.dueDate || undefined : task.dueDate,
+                  priority: 'priority' in patch ? patch.priority || undefined : task.priority,
+                  updatedAt: now,
+                }
+              : task,
+          ),
+        });
+      },
+
       toggleTask(id, done) {
         const current = requireState();
         const now = nowIso();
-        let next: AppState = {
+        commit({
           ...current,
           tasks: current.tasks.map((task) =>
             task.id === id
@@ -443,9 +472,7 @@ function useAppActions(
                 }
               : task,
           ),
-        };
-        next = refreshAchievements(next);
-        commit(next);
+        });
       },
 
       deleteTask(id) {
@@ -499,7 +526,7 @@ function useAppActions(
                   ...patch,
                   title: patch.title == null ? note.title : patch.title.trim().slice(0, 80) || 'Untitled note',
                   body: patch.body == null ? note.body : patch.body.slice(0, 12000),
-                  labelId: patch.labelId || undefined,
+                  labelId: 'labelId' in patch ? patch.labelId || undefined : note.labelId,
                   updatedAt: now,
                 }
               : note,
@@ -575,8 +602,8 @@ function useAppActions(
                   ...patch,
                   front: patch.front == null ? card.front : patch.front.trim().slice(0, 1000),
                   back: patch.back == null ? card.back : patch.back.trim().slice(0, 2000),
-                  subjectId: patch.subjectId || undefined,
-                  labelId: patch.labelId || undefined,
+                  subjectId: 'subjectId' in patch ? patch.subjectId || undefined : card.subjectId,
+                  labelId: 'labelId' in patch ? patch.labelId || undefined : card.labelId,
                   updatedAt: now,
                 }
               : card,
@@ -595,6 +622,101 @@ function useAppActions(
         });
       },
 
+      reviewFlashcard(id, grade) {
+        const current = requireState();
+        const now = nowIso();
+        commit(
+          {
+            ...current,
+            flashcards: (current.flashcards || []).map((card) =>
+              card.id === id ? { ...card, review: scheduleReview(card.review, grade, Date.parse(now)), updatedAt: now } : card,
+            ),
+          },
+          { silent: true },
+        );
+      },
+
+      resetFlashcardProgress(id) {
+        const current = requireState();
+        const now = nowIso();
+        commit({
+          ...current,
+          flashcards: (current.flashcards || []).map((card) =>
+            card.id === id ? { ...card, review: undefined, updatedAt: now } : card,
+          ),
+        });
+      },
+
+      createDeadline(draft) {
+        const current = requireState();
+        if (!draft.title.trim() || !draft.dueAt) {
+          notify('Deadline needs a title and date', 'Add what is due and when it is due.', 'warning');
+          return;
+        }
+        const now = nowIso();
+        const deadline: Deadline = { id: createId('deadline'), ...cleanDeadline(draft), createdAt: now, updatedAt: now };
+        commit({ ...current, deadlines: [deadline, ...(current.deadlines || [])] });
+        notify('Deadline added', deadline.title, 'success');
+      },
+
+      updateDeadline(id, patch) {
+        const current = requireState();
+        const now = nowIso();
+        commit({
+          ...current,
+          deadlines: (current.deadlines || []).map((item) =>
+            item.id === id ? { ...item, ...cleanDeadline(patch, item), updatedAt: now } : item,
+          ),
+        });
+      },
+
+      deleteDeadline(id) {
+        const current = requireState();
+        const now = nowIso();
+        commit({
+          ...current,
+          deadlines: (current.deadlines || []).map((item) =>
+            item.id === id ? { ...item, deletedAt: now, updatedAt: now } : item,
+          ),
+        });
+        notify('Deadline archived', 'You can restore it from the archive.', 'success');
+      },
+
+      createAssessment(draft) {
+        const current = requireState();
+        if (!draft.title.trim() || !(Number(draft.maxScore) > 0)) {
+          notify('Result needs a title and a maximum mark', 'For example 54 out of 70.', 'warning');
+          return;
+        }
+        const now = nowIso();
+        const assessment: Assessment = { id: createId('assessment'), ...cleanAssessment(draft), createdAt: now, updatedAt: now };
+        commit({ ...current, assessments: [assessment, ...(current.assessments || [])] });
+        notify('Result recorded', assessment.title, 'success');
+      },
+
+      updateAssessment(id, patch) {
+        const current = requireState();
+        const now = nowIso();
+        commit({
+          ...current,
+          assessments: (current.assessments || []).map((item) =>
+            item.id === id ? { ...item, ...cleanAssessment(patch, item), updatedAt: now } : item,
+          ),
+        });
+      },
+
+      deleteAssessment(id) {
+        const current = requireState();
+        const now = nowIso();
+        commit({
+          ...current,
+          assessments: (current.assessments || []).map((item) =>
+            item.id === id ? { ...item, deletedAt: now, updatedAt: now } : item,
+          ),
+        });
+        notify('Result archived', 'You can restore it from the archive.', 'success');
+      },
+
       addSession(draft) {
         const current = requireState();
         const next = appendSession(current, draft);
@@ -603,7 +725,7 @@ function useAppActions(
           return false;
         }
         commit(next);
-        notify('Session saved', 'Your Island and Garden both grew.', 'success');
+        notify('Session logged', `${Math.round(next.sessions[0].durationSec / 60)} minutes recorded.`, 'success');
         if (next.sync.enabled) {
           void this.syncNow();
         }
@@ -654,14 +776,9 @@ function useAppActions(
       restoreArchived(kind, id) {
         const current = requireState();
         const now = nowIso();
-        const next: AppState = { ...current };
-        if (kind === 'label') next.labels = restoreRow(current.labels, id, now);
-        if (kind === 'task') next.tasks = restoreRow(current.tasks, id, now);
-        if (kind === 'note') next.notes = restoreRow(current.notes || [], id, now);
-        if (kind === 'subject') next.subjects = restoreRow(current.subjects || [], id, now);
-        if (kind === 'flashcard') next.flashcards = restoreRow(current.flashcards || [], id, now);
-        if (kind === 'session') next.sessions = restoreRow(current.sessions, id, now);
-        commit(next);
+        const key = ARCHIVE_COLLECTIONS[kind];
+        const rows = (current[key] || []) as Array<{ id: string; deletedAt?: string; updatedAt: string }>;
+        commit({ ...current, [key]: restoreRow(rows, id, now) });
         notify('Restored', 'The archived item is active again.', 'success');
       },
 
@@ -669,14 +786,9 @@ function useAppActions(
         const current = requireState();
         if (!window.confirm('Permanently delete this archived item? This cannot be undone.')) return;
 
-        const next: AppState = { ...current };
-        if (kind === 'label') next.labels = purgeRow(current.labels, id);
-        if (kind === 'task') next.tasks = purgeRow(current.tasks, id);
-        if (kind === 'note') next.notes = purgeRow(current.notes || [], id);
-        if (kind === 'subject') next.subjects = purgeRow(current.subjects || [], id);
-        if (kind === 'flashcard') next.flashcards = purgeRow(current.flashcards || [], id);
-        if (kind === 'session') next.sessions = purgeRow(current.sessions, id);
-        commit(next);
+        const key = ARCHIVE_COLLECTIONS[kind];
+        const rows = (current[key] || []) as Array<{ id: string }>;
+        commit({ ...current, [key]: purgeRow(rows, id) });
 
         const client = getSupabaseClient();
         if (client) {
@@ -793,7 +905,7 @@ function useAppActions(
               updatedAt: now,
             },
           };
-          notify('Pomodoro saved', 'Break time. The work is logged already.', 'success');
+          notify('Focus round logged', 'Time for a break.', 'success');
         } else {
           next = {
             ...current,
@@ -818,7 +930,7 @@ function useAppActions(
         commit(next);
       },
 
-      saveActiveTimer() {
+      saveActiveTimer(note) {
         const current = requireState();
         const timer = current.activeTimer;
         if (!timer) return false;
@@ -838,6 +950,7 @@ function useAppActions(
           },
           {
             durationSec: elapsed,
+            note,
             method: timer.mode === 'countdown' ? 'timer' : timer.mode,
             rewardMode: timer.labeling.rewardMode,
             labelId: timer.labeling.labelId,
@@ -851,62 +964,21 @@ function useAppActions(
           return false;
         }
         commit(next);
-        notify('Session saved', 'Your progress is safely stored locally.', 'success');
+        notify('Session logged', `${Math.round(next.sessions[0].durationSec / 60)} minutes recorded.`, 'success');
+        if (next.sync.enabled) void this.syncNow();
         return true;
       },
 
-      harvestFruits() {
-        const current = requireState();
-        const ready = computeFruitsReady(current.gamification);
-        if (ready <= 0) {
-          notify('No fruit yet', 'Keep studying and your tree will produce fruit.', 'info');
-          return;
-        }
-        const tree = current.gamification.gardenTreeType || 'Apple';
-        let next: AppState = {
-          ...current,
-          gamification: {
-            ...current.gamification,
-            gardenHarvestedOnTree: current.gamification.gardenHarvestedOnTree + ready,
-            fruitCollection: {
-              ...current.gamification.fruitCollection,
-              [tree]: (current.gamification.fruitCollection[tree] || 0) + ready,
-            },
-          },
-        };
-        next = appendRewardLog(next, {
-          title: 'Fruit harvested',
-          detail: `${ready} ${tree} fruit added to your collection.`,
-          kind: 'fruit',
-        });
-        next = refreshAchievements(next);
-        commit(next);
-        notify('Harvested', `${ready} ${tree} fruit collected.`, 'success');
-      },
-
-      restartGarden(treeType) {
-        const current = requireState();
-        commit({
-          ...current,
-          gamification: {
-            ...current.gamification,
-            gardenTreeType: treeType,
-            gardenGrowthSec: 0,
-            gardenHarvestedOnTree: 0,
-          },
-        });
-      },
-
       replaceState(next) {
-        commit(refreshAchievements(next));
-        notify('Backup imported', 'Bloomora replaced the local V2 database.', 'success');
+        commit(next);
+        notify('Backup imported', 'Your local data was replaced with the backup.', 'success');
       },
 
       async resetAll() {
         const fresh = await clearAppState();
         stateRef.current = fresh;
         setState(fresh);
-        notify('Bloomora reset', 'Your V2 local database has been reset.', 'success');
+        notify('Data reset', 'All local Bloomora data on this device was cleared.', 'success');
       },
 
       async syncNow() {
@@ -922,7 +994,7 @@ function useAppActions(
           if (!user) throw new Error('Sign in first to sync across devices.');
           const synced = await syncAppState(client, user, stateRef.current ?? current);
           commit(synced, { silent: true });
-          notify('Sync complete', 'Local and cloud data were merged by latest update time.', 'success');
+          notify('Synced', 'This device and your account are up to date.', 'success');
         } catch (error) {
           let message = 'Unknown sync error.';
           if (error instanceof Error) {
@@ -993,12 +1065,13 @@ function useAppActions(
           notify('Sync is not configured', 'Add Supabase env vars, then restart the dev server.', 'warning');
           return;
         }
-        const user = await signInWithPassword(client, email, password);
+        const user = await signInWithPassword(client, email.trim(), password);
         commit({
-          ...current,
+          ...(stateRef.current ?? current),
           sync: { enabled: true, status: 'idle', userEmail: user.email },
         });
-        notify('Signed in', 'Optional sync is ready.', 'success');
+        notify('Signed in', user.email ? `Signed in as ${user.email}.` : 'Sync is ready.', 'success');
+        void this.syncNow();
       },
 
       async signUp(email, password) {
@@ -1007,8 +1080,8 @@ function useAppActions(
           notify('Sync is not configured', 'Add Supabase env vars, then restart the dev server.', 'warning');
           return;
         }
-        await signUpWithPassword(client, email, password);
-        notify('Account created', 'Check your email if Supabase confirmation is enabled.', 'success');
+        await signUpWithPassword(client, email.trim(), password);
+        notify('Account created', 'Check your inbox to confirm your email, then sign in.', 'success');
       },
 
       async signOut() {
@@ -1016,7 +1089,7 @@ function useAppActions(
         const client = getSupabaseClient();
         if (client) await supabaseSignOut(client);
         commit({ ...current, sync: { enabled: false, status: 'offline' } });
-        notify('Signed out', 'Bloomora is still fully available locally.', 'success');
+        notify('Signed out', 'Your data is still available on this device.', 'success');
       },
 
       dismissToast(id) {
@@ -1029,6 +1102,34 @@ function useAppActions(
         commit({
           ...current,
           timetable,
+        });
+      },
+
+      addTimetableEntry(entry) {
+        const current = requireState();
+        const module = entry.module.trim();
+        const timeHr = entry.timeHr.trim();
+        if (!module || !timeHr || !entry.day) {
+          notify('Timetable entry incomplete', 'Choose a day, a time, and what the class is.', 'warning');
+          return;
+        }
+        commit({
+          ...current,
+          timetable: {
+            entries: [...(current.timetable?.entries || []), { id: createId('slot'), day: entry.day, timeHr: timeHr.slice(0, 40), module: module.slice(0, 120) }],
+            updatedAt: nowIso(),
+          },
+        });
+      },
+
+      removeTimetableEntry(id) {
+        const current = requireState();
+        commit({
+          ...current,
+          timetable: {
+            entries: (current.timetable?.entries || []).filter((entry) => entry.id !== id),
+            updatedAt: nowIso(),
+          },
         });
       },
     };
@@ -1067,9 +1168,8 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     loadAppState()
       .then((loaded) => {
         if (!active) return;
-        const refreshed = refreshAchievements(loaded);
-        stateRef.current = refreshed;
-        setState(refreshed);
+        stateRef.current = loaded;
+        setState(loaded);
       })
       .catch((error) => {
         console.error(error);

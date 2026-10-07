@@ -94,7 +94,42 @@ create table if not exists public.bloomora_sessions (
   primary key (user_id, id)
 );
 
+create table if not exists public.bloomora_deadlines (
+  user_id uuid not null references auth.users(id) on delete cascade,
+  id text not null,
+  title text not null,
+  kind text not null default 'assignment',
+  subject_id text,
+  due_at text not null,
+  weight numeric,
+  status text not null default 'not-started',
+  notes text,
+  created_at timestamptz,
+  updated_at timestamptz not null default now(),
+  deleted_at timestamptz,
+  primary key (user_id, id)
+);
+
+create table if not exists public.bloomora_assessments (
+  user_id uuid not null references auth.users(id) on delete cascade,
+  id text not null,
+  title text not null,
+  subject_id text,
+  score numeric not null default 0,
+  max_score numeric not null default 100,
+  weight numeric,
+  date text,
+  notes text,
+  created_at timestamptz,
+  updated_at timestamptz not null default now(),
+  deleted_at timestamptz,
+  primary key (user_id, id)
+);
+
 alter table public.bloomora_sessions add column if not exists note text;
+alter table public.bloomora_tasks add column if not exists due_date text;
+alter table public.bloomora_tasks add column if not exists priority text;
+alter table public.bloomora_flashcards add column if not exists review jsonb;
 
 alter table public.bloomora_profile_states enable row level security;
 alter table public.bloomora_labels enable row level security;
@@ -103,6 +138,8 @@ alter table public.bloomora_notes enable row level security;
 alter table public.bloomora_subjects enable row level security;
 alter table public.bloomora_flashcards enable row level security;
 alter table public.bloomora_sessions enable row level security;
+alter table public.bloomora_deadlines enable row level security;
+alter table public.bloomora_assessments enable row level security;
 
 drop policy if exists "bloomora profile states own read" on public.bloomora_profile_states;
 drop policy if exists "bloomora profile states own insert" on public.bloomora_profile_states;
@@ -164,3 +201,21 @@ create policy "bloomora sessions own read" on public.bloomora_sessions for selec
 create policy "bloomora sessions own insert" on public.bloomora_sessions for insert with check (auth.uid() = user_id);
 create policy "bloomora sessions own update" on public.bloomora_sessions for update using (auth.uid() = user_id);
 create policy "bloomora sessions own delete" on public.bloomora_sessions for delete using (auth.uid() = user_id);
+
+drop policy if exists "bloomora deadlines own read" on public.bloomora_deadlines;
+drop policy if exists "bloomora deadlines own insert" on public.bloomora_deadlines;
+drop policy if exists "bloomora deadlines own update" on public.bloomora_deadlines;
+drop policy if exists "bloomora deadlines own delete" on public.bloomora_deadlines;
+create policy "bloomora deadlines own read" on public.bloomora_deadlines for select using (auth.uid() = user_id);
+create policy "bloomora deadlines own insert" on public.bloomora_deadlines for insert with check (auth.uid() = user_id);
+create policy "bloomora deadlines own update" on public.bloomora_deadlines for update using (auth.uid() = user_id);
+create policy "bloomora deadlines own delete" on public.bloomora_deadlines for delete using (auth.uid() = user_id);
+
+drop policy if exists "bloomora assessments own read" on public.bloomora_assessments;
+drop policy if exists "bloomora assessments own insert" on public.bloomora_assessments;
+drop policy if exists "bloomora assessments own update" on public.bloomora_assessments;
+drop policy if exists "bloomora assessments own delete" on public.bloomora_assessments;
+create policy "bloomora assessments own read" on public.bloomora_assessments for select using (auth.uid() = user_id);
+create policy "bloomora assessments own insert" on public.bloomora_assessments for insert with check (auth.uid() = user_id);
+create policy "bloomora assessments own update" on public.bloomora_assessments for update using (auth.uid() = user_id);
+create policy "bloomora assessments own delete" on public.bloomora_assessments for delete using (auth.uid() = user_id);

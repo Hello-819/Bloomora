@@ -59,6 +59,11 @@ describe('createDefaultState', () => {
       updatedAt: mockTime,
       profile: {
         displayName: 'Student',
+        avatarImage: undefined,
+        educationLevel: 'sixth-form',
+        institution: '',
+        course: '',
+        yearOfStudy: '',
         weeklyGoalHours: 10,
         dailyGoalMinutes: 60,
         theme: 'daybreak',
@@ -87,6 +92,7 @@ describe('createDefaultState', () => {
         },
         hiddenSidebarItems: [],
         hideAiTutor: false,
+        sidebarCollapsed: false,
       },
       labels: [],
       tasks: [],
@@ -94,6 +100,8 @@ describe('createDefaultState', () => {
       subjects: [],
       flashcards: [],
       sessions: [],
+      deadlines: [],
+      assessments: [],
       gamification: {
         islandXpSec: 0,
         gardenGrowthSec: 0,

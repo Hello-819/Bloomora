@@ -2,7 +2,11 @@ import type {
   ActiveTimer,
   AmbientType,
   AppState,
+  Assessment,
+  Deadline,
+  EducationLevel,
   Flashcard,
+  FlashcardReview,
   Label,
   RewardMode,
   StudyNote,
@@ -118,12 +122,88 @@ function normalizeFlashcards(value: unknown): Flashcard[] {
         back: asString(source.back).slice(0, 2000),
         subjectId: asString(source.subjectId) || undefined,
         labelId: asString(source.labelId) || undefined,
+        review: normalizeReview(source.review),
         createdAt: validIsoString(source.createdAt, now),
         updatedAt: validIsoString(source.updatedAt, now),
         deletedAt: validOptionalIso(source.deletedAt),
       };
     })
     .filter((card) => card.id && (card.front || card.back));
+}
+
+export function normalizeReview(value: unknown): FlashcardReview | undefined {
+  const source = asObject(value);
+  if (typeof source.dueAt !== 'string' || !Number.isFinite(Date.parse(source.dueAt))) return undefined;
+  return {
+    dueAt: source.dueAt,
+    intervalDays: Math.max(0, asNumber(source.intervalDays)),
+    ease: Math.min(4, Math.max(1.3, asNumber(source.ease, 2.5))),
+    reps: Math.max(0, Math.round(asNumber(source.reps))),
+    lapses: Math.max(0, Math.round(asNumber(source.lapses))),
+    lastReviewedAt: validOptionalIso(source.lastReviewedAt),
+  };
+}
+
+const DEADLINE_KINDS = ['assignment', 'coursework', 'exam', 'presentation', 'reading', 'other'] as const;
+const DEADLINE_STATUSES = ['not-started', 'in-progress', 'submitted'] as const;
+const EDUCATION_LEVELS: EducationLevel[] = ['gcse', 'sixth-form', 'college', 'university', 'postgraduate', 'other'];
+
+export function normalizeEducationLevel(value: unknown, fallback: EducationLevel = 'sixth-form'): EducationLevel {
+  return EDUCATION_LEVELS.includes(value as EducationLevel) ? (value as EducationLevel) : fallback;
+}
+
+function optionalNumber(value: unknown): number | undefined {
+  if (value === null || value === undefined || value === '') return undefined;
+  const n = Number(value);
+  return Number.isFinite(n) ? n : undefined;
+}
+
+export function normalizeDeadlines(value: unknown): Deadline[] {
+  const items = Array.isArray(value) ? value : [];
+  return items
+    .map((item) => {
+      const source = asObject(item);
+      const now = nowIso();
+      const kind = DEADLINE_KINDS.find((entry) => entry === source.kind) ?? 'assignment';
+      const status = DEADLINE_STATUSES.find((entry) => entry === source.status) ?? 'not-started';
+      return {
+        id: asString(source.id, createId('deadline')),
+        title: asString(source.title, 'Untitled deadline').slice(0, 120) || 'Untitled deadline',
+        kind,
+        subjectId: asString(source.subjectId) || undefined,
+        dueAt: asString(source.dueAt).slice(0, 32),
+        weight: optionalNumber(source.weight),
+        status,
+        notes: asString(source.notes).slice(0, 1000) || undefined,
+        createdAt: validIsoString(source.createdAt, now),
+        updatedAt: validIsoString(source.updatedAt, now),
+        deletedAt: validOptionalIso(source.deletedAt),
+      };
+    })
+    .filter((deadline) => deadline.id && deadline.dueAt);
+}
+
+export function normalizeAssessments(value: unknown): Assessment[] {
+  const items = Array.isArray(value) ? value : [];
+  return items
+    .map((item) => {
+      const source = asObject(item);
+      const now = nowIso();
+      return {
+        id: asString(source.id, createId('assessment')),
+        title: asString(source.title, 'Assessment').slice(0, 120) || 'Assessment',
+        subjectId: asString(source.subjectId) || undefined,
+        score: Math.max(0, asNumber(source.score)),
+        maxScore: Math.max(0, asNumber(source.maxScore, 100)),
+        weight: optionalNumber(source.weight),
+        date: asString(source.date).slice(0, 32),
+        notes: asString(source.notes).slice(0, 1000) || undefined,
+        createdAt: validIsoString(source.createdAt, now),
+        updatedAt: validIsoString(source.updatedAt, now),
+        deletedAt: validOptionalIso(source.deletedAt),
+      };
+    })
+    .filter((assessment) => assessment.id);
 }
 
 function validIsoString(value: unknown, fallback = nowIso()): string {
@@ -270,6 +350,7 @@ export function migrateV1State(raw: unknown): AppState {
     createdAt: now,
     updatedAt: now,
     profile: {
+      ...defaults.profile,
       displayName: asString(profile.name, defaults.profile.displayName),
       weeklyGoalHours: asNumber(profile.weeklyGoalHours, defaults.profile.weeklyGoalHours),
       dailyGoalMinutes: Math.min(1440, Math.max(1, asNumber(profile.dailyGoalMinutes, defaults.profile.dailyGoalMinutes))),
@@ -361,6 +442,16 @@ export function normalizeImportedState(value: unknown): AppState | null {
         music: { ...defaults.profile.music, ...(state.profile?.music || {}) },
         pomodoro: { ...defaults.profile.pomodoro, ...(state.profile?.pomodoro || {}) },
         aiTutor: { activeSubjectId },
+        educationLevel: normalizeEducationLevel(state.profile?.educationLevel, defaults.profile.educationLevel),
+        institution: asString(state.profile?.institution).slice(0, 120),
+        course: asString(state.profile?.course).slice(0, 120),
+        yearOfStudy: asString(state.profile?.yearOfStudy).slice(0, 40),
+        avatarImage: typeof state.profile?.avatarImage === 'string' && state.profile.avatarImage.startsWith('data:image/')
+          ? state.profile.avatarImage
+          : undefined,
+        hiddenSidebarItems: Array.isArray(state.profile?.hiddenSidebarItems)
+          ? state.profile.hiddenSidebarItems.filter((item): item is string => typeof item === 'string')
+          : [],
       },
       labels: Array.isArray(state.labels) ? state.labels : [],
       tasks: Array.isArray(state.tasks) ? state.tasks : [],
@@ -368,6 +459,8 @@ export function normalizeImportedState(value: unknown): AppState | null {
       subjects: repairedSubjects,
       flashcards: normalizeFlashcards(state.flashcards),
       sessions: Array.isArray(state.sessions) ? state.sessions : [],
+      deadlines: normalizeDeadlines(state.deadlines),
+      assessments: normalizeAssessments(state.assessments),
       gamification: {
         ...defaults.gamification,
         ...state.gamification,

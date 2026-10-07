@@ -1,7 +1,8 @@
 import { createClient, type SupabaseClient, type User } from '@supabase/supabase-js';
-import type { AppState, Flashcard, Label, StudyNote, StudySession, StudySubject, StudyTask } from '../types';
+import type { AppState, Assessment, Deadline, Flashcard, Label, StudyNote, StudySession, StudySubject, StudyTask } from '../types';
 import { nowIso } from './dates';
 import { createDefaultState } from './defaultState';
+import { normalizeAssessments, normalizeDeadlines, normalizeReview } from './migration';
 
 const TABLES = {
   profile: 'bloomora_profile_states',
@@ -11,6 +12,8 @@ const TABLES = {
   subjects: 'bloomora_subjects',
   flashcards: 'bloomora_flashcards',
   sessions: 'bloomora_sessions',
+  deadlines: 'bloomora_deadlines',
+  assessments: 'bloomora_assessments',
 } as const;
 
 type RemoteProfile = {
@@ -37,6 +40,8 @@ type RemoteTaskRow = {
   text: string;
   notes?: string | null;
   label_id?: string | null;
+  due_date?: string | null;
+  priority?: string | null;
   done: boolean;
   created_at: string;
   updated_at: string;
@@ -76,6 +81,37 @@ type RemoteFlashcardRow = {
   back: string;
   subject_id?: string | null;
   label_id?: string | null;
+  review?: unknown;
+  created_at: string;
+  updated_at: string;
+  deleted_at?: string | null;
+};
+
+type RemoteDeadlineRow = {
+  user_id: string;
+  id: string;
+  title: string;
+  kind: string;
+  subject_id?: string | null;
+  due_at: string;
+  weight?: number | null;
+  status: string;
+  notes?: string | null;
+  created_at: string;
+  updated_at: string;
+  deleted_at?: string | null;
+};
+
+type RemoteAssessmentRow = {
+  user_id: string;
+  id: string;
+  title: string;
+  subject_id?: string | null;
+  score: number;
+  max_score: number;
+  weight?: number | null;
+  date?: string | null;
+  notes?: string | null;
   created_at: string;
   updated_at: string;
   deleted_at?: string | null;
@@ -223,6 +259,8 @@ function remoteTask(row: RemoteTaskRow): StudyTask {
     text: String(row.text || 'Untitled task'),
     notes: row.notes ?? undefined,
     labelId: row.label_id ?? undefined,
+    dueDate: row.due_date || undefined,
+    priority: row.priority === 'low' || row.priority === 'medium' || row.priority === 'high' ? row.priority : undefined,
     done: Boolean(row.done),
     createdAt: validIso(row.created_at, now),
     updatedAt: validIso(row.updated_at, now),
@@ -268,10 +306,43 @@ function remoteFlashcard(row: RemoteFlashcardRow): Flashcard {
     back: String(row.back || ''),
     subjectId: row.subject_id ?? undefined,
     labelId: row.label_id ?? undefined,
+    review: normalizeReview(row.review),
     createdAt: validIso(row.created_at, now),
     updatedAt: validIso(row.updated_at, now),
     deletedAt: row.deleted_at ?? undefined,
   };
+}
+
+function remoteDeadline(row: RemoteDeadlineRow): Deadline | undefined {
+  return normalizeDeadlines([{
+    id: row.id,
+    title: row.title,
+    kind: row.kind,
+    subjectId: row.subject_id,
+    dueAt: row.due_at,
+    weight: row.weight,
+    status: row.status,
+    notes: row.notes,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+    deletedAt: row.deleted_at,
+  }])[0];
+}
+
+function remoteAssessment(row: RemoteAssessmentRow): Assessment | undefined {
+  return normalizeAssessments([{
+    id: row.id,
+    title: row.title,
+    subjectId: row.subject_id,
+    score: row.score,
+    maxScore: row.max_score,
+    weight: row.weight,
+    date: row.date,
+    notes: row.notes,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+    deletedAt: row.deleted_at,
+  }])[0];
 }
 
 function remoteSession(row: RemoteSessionRow): StudySession {
@@ -494,6 +565,8 @@ export async function syncAppState(client: SupabaseClient, user: User, local: Ap
     { data: subjectsData, error: subjectsError },
     { data: flashcardsData, error: flashcardsError },
     { data: sessionsData, error: sessionsError },
+    { data: deadlinesData, error: deadlinesError },
+    { data: assessmentsData, error: assessmentsError },
   ] =
     await Promise.all([
       client.from(TABLES.profile).select('*').eq('id', user.id).maybeSingle(),
@@ -503,9 +576,17 @@ export async function syncAppState(client: SupabaseClient, user: User, local: Ap
       client.from(TABLES.subjects).select('*').eq('user_id', user.id),
       client.from(TABLES.flashcards).select('*').eq('user_id', user.id),
       client.from(TABLES.sessions).select('*').eq('user_id', user.id),
+      client.from(TABLES.deadlines).select('*').eq('user_id', user.id),
+      client.from(TABLES.assessments).select('*').eq('user_id', user.id),
     ]);
 
-  const firstError = profileError || labelsError || tasksError || notesError || subjectsError || flashcardsError || sessionsError;
+  // Deadlines and grades were added later; older projects may not have run the
+  // newer schema yet, so their tables are optional and simply stay local.
+  const optionalError = [deadlinesError, assessmentsError].find((error) => error && !isMissingTableError(error));
+  const hasDeadlinesTable = !deadlinesError;
+  const hasAssessmentsTable = !assessmentsError;
+
+  const firstError = profileError || labelsError || tasksError || notesError || subjectsError || flashcardsError || sessionsError || optionalError;
   if (firstError) {
     if (isMissingTableError(firstError)) {
       throw new Error(`Bloomora V2 sync tables are missing. Run the latest supabase_schema_v2.sql in Supabase SQL Editor, then try Sync now again. Details: ${syncErrorMessage(firstError)}`);
@@ -520,6 +601,12 @@ export async function syncAppState(client: SupabaseClient, user: User, local: Ap
   const remoteSubjects = ((subjectsData ?? []) as RemoteSubjectRow[]).map(remoteSubject).filter((row) => row.id);
   const remoteFlashcards = ((flashcardsData ?? []) as RemoteFlashcardRow[]).map(remoteFlashcard).filter((row) => row.id);
   const remoteSessions = ((sessionsData ?? []) as RemoteSessionRow[]).map(remoteSession).filter((row) => row.id);
+  const remoteDeadlines = ((deadlinesData ?? []) as RemoteDeadlineRow[])
+    .map(remoteDeadline)
+    .filter((row): row is Deadline => Boolean(row?.id));
+  const remoteAssessments = ((assessmentsData ?? []) as RemoteAssessmentRow[])
+    .map(remoteAssessment)
+    .filter((row): row is Assessment => Boolean(row?.id));
   const shouldImportLegacy = !remoteProfile
     && remoteLabels.length === 0
     && remoteTasks.length === 0
@@ -539,6 +626,8 @@ export async function syncAppState(client: SupabaseClient, user: User, local: Ap
     subjects: mergeRows(localWithLegacy.subjects || [], remoteSubjects),
     flashcards: mergeRows(localWithLegacy.flashcards || [], remoteFlashcards),
     sessions: mergeRows(localWithLegacy.sessions, remoteSessions),
+    deadlines: mergeRows(localWithLegacy.deadlines || [], remoteDeadlines),
+    assessments: mergeRows(localWithLegacy.assessments || [], remoteAssessments),
     sync: {
       enabled: true,
       status: 'idle',
@@ -548,7 +637,7 @@ export async function syncAppState(client: SupabaseClient, user: User, local: Ap
     updatedAt: nowIso(),
   };
 
-  await Promise.all([
+  const results = await Promise.all([
     upsertProfile(client, user.id, merged),
     upsertLabels(client, user.id, merged.labels),
     upsertTasks(client, user.id, merged.tasks),
@@ -556,9 +645,38 @@ export async function syncAppState(client: SupabaseClient, user: User, local: Ap
     upsertSubjects(client, user.id, merged.subjects),
     upsertFlashcards(client, user.id, merged.flashcards),
     upsertSessions(client, user.id, merged.sessions),
+    hasDeadlinesTable ? upsertDeadlines(client, user.id, merged.deadlines) : undefined,
+    hasAssessmentsTable ? upsertAssessments(client, user.id, merged.assessments) : undefined,
   ]);
+  const writeError = results.find((result) => result?.error)?.error;
+  if (writeError) throw new Error(syncErrorMessage(writeError));
 
   return merged;
+}
+
+type UpsertResult = { error: unknown } | undefined;
+
+function isMissingColumnError(error: unknown, columns: string[]): boolean {
+  const message = syncErrorMessage(error).toLowerCase();
+  return (message.includes('column') || message.includes('pgrst204') || message.includes('42703'))
+    && columns.some((column) => message.includes(column));
+}
+
+/**
+ * Upserts rows, retrying without newer optional columns when the remote table
+ * predates them so older Supabase projects keep syncing their core data.
+ */
+async function upsertRows(
+  client: SupabaseClient,
+  table: string,
+  rows: Record<string, unknown>[],
+  optionalColumns: string[] = [],
+): Promise<UpsertResult> {
+  if (!rows.length) return undefined;
+  const first = await client.from(table).upsert(rows, { onConflict: 'user_id,id' });
+  if (!first.error || !optionalColumns.length || !isMissingColumnError(first.error, optionalColumns)) return first;
+  const stripped = rows.map((row) => Object.fromEntries(Object.entries(row).filter(([key]) => !optionalColumns.includes(key))));
+  return client.from(table).upsert(stripped, { onConflict: 'user_id,id' });
 }
 
 async function upsertProfile(client: SupabaseClient, userId: string, state: AppState) {
@@ -574,8 +692,9 @@ async function upsertProfile(client: SupabaseClient, userId: string, state: AppS
 }
 
 async function upsertLabels(client: SupabaseClient, userId: string, labels: Label[]) {
-  if (!labels.length) return;
-  return client.from(TABLES.labels).upsert(
+  return upsertRows(
+    client,
+    TABLES.labels,
     labels.map((label) => ({
       user_id: userId,
       id: label.id,
@@ -586,32 +705,35 @@ async function upsertLabels(client: SupabaseClient, userId: string, labels: Labe
       updated_at: label.updatedAt,
       deleted_at: label.deletedAt ?? null,
     })),
-    { onConflict: 'user_id,id' },
   );
 }
 
 async function upsertTasks(client: SupabaseClient, userId: string, tasks: StudyTask[]) {
-  if (!tasks.length) return;
-  return client.from(TABLES.tasks).upsert(
+  return upsertRows(
+    client,
+    TABLES.tasks,
     tasks.map((task) => ({
       user_id: userId,
       id: task.id,
       text: task.text,
       notes: task.notes ?? null,
       label_id: task.labelId ?? null,
+      due_date: task.dueDate ?? null,
+      priority: task.priority ?? null,
       done: task.done,
       created_at: task.createdAt,
       updated_at: task.updatedAt,
       completed_at: task.completedAt ?? null,
       deleted_at: task.deletedAt ?? null,
     })),
-    { onConflict: 'user_id,id' },
+    ['due_date', 'priority'],
   );
 }
 
 async function upsertNotes(client: SupabaseClient, userId: string, notes: StudyNote[]) {
-  if (!notes.length) return;
-  return client.from(TABLES.notes).upsert(
+  return upsertRows(
+    client,
+    TABLES.notes,
     notes.map((note) => ({
       user_id: userId,
       id: note.id,
@@ -623,13 +745,13 @@ async function upsertNotes(client: SupabaseClient, userId: string, notes: StudyN
       updated_at: note.updatedAt,
       deleted_at: note.deletedAt ?? null,
     })),
-    { onConflict: 'user_id,id' },
   );
 }
 
 async function upsertSubjects(client: SupabaseClient, userId: string, subjects: StudySubject[]) {
-  if (!subjects.length) return;
-  return client.from(TABLES.subjects).upsert(
+  return upsertRows(
+    client,
+    TABLES.subjects,
     subjects.map((subject) => ({
       user_id: userId,
       id: subject.id,
@@ -642,13 +764,13 @@ async function upsertSubjects(client: SupabaseClient, userId: string, subjects: 
       updated_at: subject.updatedAt,
       deleted_at: subject.deletedAt ?? null,
     })),
-    { onConflict: 'user_id,id' },
   );
 }
 
 async function upsertFlashcards(client: SupabaseClient, userId: string, flashcards: Flashcard[]) {
-  if (!flashcards.length) return;
-  return client.from(TABLES.flashcards).upsert(
+  return upsertRows(
+    client,
+    TABLES.flashcards,
     flashcards.map((card) => ({
       user_id: userId,
       id: card.id,
@@ -656,17 +778,19 @@ async function upsertFlashcards(client: SupabaseClient, userId: string, flashcar
       back: card.back,
       subject_id: card.subjectId ?? null,
       label_id: card.labelId ?? null,
+      review: card.review ?? null,
       created_at: card.createdAt,
       updated_at: card.updatedAt,
       deleted_at: card.deletedAt ?? null,
     })),
-    { onConflict: 'user_id,id' },
+    ['review'],
   );
 }
 
 async function upsertSessions(client: SupabaseClient, userId: string, sessions: StudySession[]) {
-  if (!sessions.length) return;
-  return client.from(TABLES.sessions).upsert(
+  return upsertRows(
+    client,
+    TABLES.sessions,
     sessions.map((session) => ({
       user_id: userId,
       id: session.id,
@@ -683,6 +807,47 @@ async function upsertSessions(client: SupabaseClient, userId: string, sessions: 
       updated_at: session.updatedAt,
       deleted_at: session.deletedAt ?? null,
     })),
-    { onConflict: 'user_id,id' },
+  );
+}
+
+async function upsertDeadlines(client: SupabaseClient, userId: string, deadlines: Deadline[]) {
+  return upsertRows(
+    client,
+    TABLES.deadlines,
+    deadlines.map((deadline) => ({
+      user_id: userId,
+      id: deadline.id,
+      title: deadline.title,
+      kind: deadline.kind,
+      subject_id: deadline.subjectId ?? null,
+      due_at: deadline.dueAt,
+      weight: deadline.weight ?? null,
+      status: deadline.status,
+      notes: deadline.notes ?? null,
+      created_at: deadline.createdAt,
+      updated_at: deadline.updatedAt,
+      deleted_at: deadline.deletedAt ?? null,
+    })),
+  );
+}
+
+async function upsertAssessments(client: SupabaseClient, userId: string, assessments: Assessment[]) {
+  return upsertRows(
+    client,
+    TABLES.assessments,
+    assessments.map((assessment) => ({
+      user_id: userId,
+      id: assessment.id,
+      title: assessment.title,
+      subject_id: assessment.subjectId ?? null,
+      score: assessment.score,
+      max_score: assessment.maxScore,
+      weight: assessment.weight ?? null,
+      date: assessment.date || null,
+      notes: assessment.notes ?? null,
+      created_at: assessment.createdAt,
+      updated_at: assessment.updatedAt,
+      deleted_at: assessment.deletedAt ?? null,
+    })),
   );
 }

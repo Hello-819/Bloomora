@@ -4,6 +4,11 @@ export type TimerMode = 'stopwatch' | 'countdown' | 'pomodoro';
 export type ThemeName = 'daybreak' | 'grove' | 'aqua' | 'ink';
 export type ColorMode = 'light' | 'dark';
 export type AmbientType = 'off' | 'fire' | 'wind' | 'sea' | 'nature';
+export type EducationLevel = 'gcse' | 'sixth-form' | 'college' | 'university' | 'postgraduate' | 'other';
+export type TaskPriority = 'low' | 'medium' | 'high';
+export type DeadlineKind = 'assignment' | 'coursework' | 'exam' | 'presentation' | 'reading' | 'other';
+export type DeadlineStatus = 'not-started' | 'in-progress' | 'submitted';
+export type ReviewGrade = 'again' | 'hard' | 'good' | 'easy';
 
 export interface Label {
   id: string;
@@ -20,6 +25,8 @@ export interface StudyTask {
   text: string;
   notes?: string;
   labelId?: string;
+  dueDate?: string;
+  priority?: TaskPriority;
   done: boolean;
   createdAt: string;
   updatedAt: string;
@@ -50,12 +57,50 @@ export interface StudySubject {
   deletedAt?: string;
 }
 
+export interface FlashcardReview {
+  dueAt: string;
+  intervalDays: number;
+  ease: number;
+  reps: number;
+  lapses: number;
+  lastReviewedAt?: string;
+}
+
 export interface Flashcard {
   id: string;
   front: string;
   back: string;
   subjectId?: string;
   labelId?: string;
+  review?: FlashcardReview;
+  createdAt: string;
+  updatedAt: string;
+  deletedAt?: string;
+}
+
+export interface Deadline {
+  id: string;
+  title: string;
+  kind: DeadlineKind;
+  subjectId?: string;
+  dueAt: string;
+  weight?: number;
+  status: DeadlineStatus;
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+  deletedAt?: string;
+}
+
+export interface Assessment {
+  id: string;
+  title: string;
+  subjectId?: string;
+  score: number;
+  maxScore: number;
+  weight?: number;
+  date: string;
+  notes?: string;
   createdAt: string;
   updatedAt: string;
   deletedAt?: string;
@@ -79,6 +124,11 @@ export interface StudySession {
 
 export interface ProfileSettings {
   displayName: string;
+  avatarImage?: string;
+  educationLevel: EducationLevel;
+  institution: string;
+  course: string;
+  yearOfStudy: string;
   weeklyGoalHours: number;
   dailyGoalMinutes: number;
   theme: ThemeName;
@@ -107,6 +157,7 @@ export interface ProfileSettings {
   };
   hiddenSidebarItems: string[];
   hideAiTutor?: boolean;
+  sidebarCollapsed?: boolean;
 }
 
 export interface RewardLogItem {
@@ -124,6 +175,10 @@ export interface QuestProgress {
   completedAt?: string;
 }
 
+/**
+ * Legacy progression data from earlier Bloomora versions. It is no longer shown
+ * or updated, but is kept so old backups and cloud rows still round-trip.
+ */
 export interface GamificationState {
   islandXpSec: number;
   gardenGrowthSec: number;
@@ -136,7 +191,7 @@ export interface GamificationState {
 }
 
 export interface TimerLabeling {
-  rewardMode: RewardMode;
+  rewardMode?: RewardMode;
   labelId?: string;
   taskIds: string[];
 }
@@ -192,6 +247,8 @@ export interface AppState {
   subjects: StudySubject[];
   flashcards: Flashcard[];
   sessions: StudySession[];
+  deadlines: Deadline[];
+  assessments: Assessment[];
   gamification: GamificationState;
   activeTimer?: ActiveTimer;
   sync: SyncState;
@@ -201,7 +258,7 @@ export interface AppState {
 export interface SessionDraft {
   durationSec: number;
   method: StudyMethod;
-  rewardMode: RewardMode;
+  rewardMode?: RewardMode;
   note?: string;
   labelId?: string;
   taskIds?: string[];
