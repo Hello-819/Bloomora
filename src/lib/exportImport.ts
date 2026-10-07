@@ -9,6 +9,8 @@ export interface ImportPreview {
   notes: number;
   subjects: number;
   flashcards: number;
+  deadlines: number;
+  assessments: number;
   totalStudySec: number;
 }
 
@@ -58,6 +60,8 @@ export function validateImportText(text: string): ImportPreview | { error: strin
     notes: (state.notes || []).filter((note) => !note.deletedAt).length,
     subjects: (state.subjects || []).filter((subject) => !subject.deletedAt).length,
     flashcards: (state.flashcards || []).filter((card) => !card.deletedAt).length,
+    deadlines: (state.deadlines || []).filter((item) => !item.deletedAt).length,
+    assessments: (state.assessments || []).filter((item) => !item.deletedAt).length,
     totalStudySec: state.sessions
       .filter((session) => !session.deletedAt)
       .reduce((sum, session) => sum + session.durationSec, 0),
